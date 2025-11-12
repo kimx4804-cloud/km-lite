@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>km-lite — RECAP 20개국 + TF-IDF 요약 + HDP% + C1~C15 분류</title>
+<style>
+:root{--bg:#0b0f14;--fg:#e6eef8;--mut:#8aa0bb;--line:#253245}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,Arial,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:16px}
+h2{margin:0 0 12px}
+textarea,input,button{border-radius:8px;padding:.45rem .6rem;font-size:14px;border:1px solid var(--line);background:#0f1620;color:var(--fg)}
+button{cursor:pointer}
+.small{color:var(--mut);font-size:12px}
+.mono{font-family:ui-monospace,Consolas,Menlo,monospace}
+.err{color:#ffb4b4}
+hr{border:none;border-top:1px solid var(--line);margin:12px 0}
+.flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card{border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px}
+#rw-results{margin-top:12px;max-height:60vh;overflow:auto;border:1px solid var(--line);padding:.6rem;border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+td,th{border:1px solid var(--line);padding:6px;text-align:left;vertical-align:top}
+.stickybar{position:sticky;top:8px;z-index:5;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px;margin:10px 0}
+.badge{display:inline-block;padding:2px 6px;border:1px solid var(--line);border-radius:999px;font-size:11px;color:var(--mut);margin-right:4px;margin-bottom:2px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center}
+.modal>div{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;box-shadow:0 0 20px rgba(0,0,0,.5)}
+#summary-box{width:80%;max-width:720px;max-height:80%;overflow:auto;padding:20px}
+#country-box{width:min(780px,92vw);max-height:80%;overflow:auto;padding:16px}
+.country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-top:8px}
+.hbar{height:8px;border-radius:4px;background:#142030;overflow:hidden}
+.hbar>span{display:block;height:100%}
+.hcol-H{background:#3aa3ff}.hcol-D{background:#61d661}.hcol-P{background:#f2b45a}
+</style>
+</head>
+<body>
+<h2>RECAP 경량 지식관리체계 (20개국 자동수집 · TF-IDF 요약 · HDP% · C1~C15)</h2>
+<p class="small">로컬 서버에서 여세요(예: <span class="mono">py -m http.server 8000</span>). 저장 시 요약·HDP·분류(C1~C15)가 <span class="mono">localStorage</span>에 저장됩니다.</p>
+
+<label>대상국(참고용)</label><br/>
+<textarea rows="3" style="width:100%" readonly>
+Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Principe, Somalia, South Sudan, Zimbabwe, Armenia, Iran, Jordan, Lebanon, Palestine, Syria, Yemen, Papua New Guinea, Solomon Islands, Timor-Leste
+</textarea>
+<br/><br/>
+
+<div class="flex">
+  <label>최근 일수</label><input id="rw-days" type="number" value="365" style="width:100px"/>
+  <label>최대 개수</label><input id="rw-limit" type="number" value="300" style="width:100px"/>
+  <button id="open-country" title="국가 필터">국가 필터</button>
+  <span id="country-chip" class="badge">전체 20개국</span>
+  <button id="rw-fetch">가져오기</button>
+  <span id="rw-status" class="small"></span>
+</div>
+
+<div id="savebar" class="stickybar flex" style="justify-content:space-between">
+  <div class="small">체크 후 저장하면 하단 패널에 누적됩니다.</div>
+  <div><button id="rw-to-notes">선택 항목 노트로 저장(요약 포함)</button></div>
+</div>
+
+<div id="rw-results"></div>
+
+<hr/>
+<div id="notes-panel">
+  <div class="flex">
+    <strong>저장된 노트/요약</strong>
+    <input id="notes-q" placeholder="검색(제목·요약·국가·분류코드)" style="flex:1;min-width:180px"/>
+    <button id="notes-refresh">새로고침</button>
+    <button id="notes-clear" title="모든 노트 삭제">전체삭제</button>
+  </div>
+  <div id="notes-list" class="small" style="margin-top:8px"></div>
+</div>
+
+<!-- 요약 모달 -->
+<div id="summary-modal" class="modal">
+  <div id="summary-box">
+    <div id="summary-title" style="font-weight:bold;font-size:18px;margin-bottom:12px;"></div>
+    <div class="small" id="summary-meta" style="margin-bottom:6px"></div>
+    <div id="summary-hdp" style="margin:8px 0"></div>
+    <div id="summary-content" style="font-size:14px;line-height:1.6;"></div>
+    <div style="margin-top:16px;text-align:right"><button id="summary-close">닫기</button></div>
+  </div>
+</div>
+
+<!-- 국가 모달 -->
+<div id="country-modal" class="modal">
+  <div id="country-box">
+    <div class="flex" style="justify-content:space-between">
+      <strong>국가 필터 선택 (다중)</strong>
+      <div class="small">체크 후 적용 → 가져오기</div>
+    </div>
+    <div class="country-grid" id="country-grid"></div>
+    <div class="flex" style="justify-content:flex-end;margin-top:10px">
+      <button id="country-clear">초기화</button>
+      <button id="country-apply">적용</button>
+      <button id="country-close">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 전역 오류 → 상태창
+window.addEventListener('error', function(e){
+  var st=document.getElementById('rw-status');
+  if(st) st.textContent='스크립트 오류: '+e.message;
+});
+
+// 상수
+var RECAP_NAMES=['Burundi','Central African Republic','Comoros','Guinea','Kenya','Mali','Sao Tome and Principe','Somalia','South Sudan','Zimbabwe','Armenia','Iran','Jordan','Lebanon','Palestine','Syria','Yemen','Papua New Guinea','Solomon Islands','Timor-Leste'];
+var RECAP_ISO3 =['BDI','CAF','COM','GIN','KEN','MLI','STP','SOM','SSD','ZWE','ARM','IRN','JOR','LBN','PSE','SYR','YEM','PNG','SLB','TLS'];
+var RECAP_MAP  =RECAP_NAMES.map(function(n,i){return {name:n,iso3:RECAP_ISO3[i]};});
+var DB_KEY='km-lite-db';
+
+// 국가 팝업
+var pickedISO3=[];
+function openCountryModal(){
+  var grid=document.getElementById('country-grid');
+  var html='';
+  for(var i=0;i<RECAP_MAP.length;i++){
+    var d=RECAP_MAP[i];
+    html+= '<label style="display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 8px">'
+         +   '<input type="checkbox" value="'+d.iso3+'" '+(pickedISO3.indexOf(d.iso3)>=0?'checked':'')+'>'
+         +   '<span>'+d.name+' <span class="badge">'+d.iso3+'</span></span>'
+         + '</label>';
+  }
+  grid.innerHTML=html;
+  document.getElementById('country-modal').style.display='flex';
+}
+function closeCountryModal(){ document.getElementById('country-modal').style.display='none'; }
+document.getElementById('open-country').onclick=openCountryModal;
+document.getElementById('country-close').onclick=closeCountryModal;
+document.getElementById('country-clear').onclick=function(){
+  pickedISO3=[]; document.getElementById('country-chip').textContent='전체 20개국'; closeCountryModal();
+};
+document.getElementById('country-apply').onclick=function(){
+  var boxes=document.querySelectorAll('#country-grid input:checked');
+  pickedISO3=[].map.call(boxes,function(x){return x.value;});
+  document.getElementById('country-chip').textContent=pickedISO3.length? (pickedISO3.length+'개국 선택') : '전체 20개국';
+  closeCountryModal();
+};
+
+// 요약(TF-IDF)
+function summarizeText(text,maxSentences){
+  maxSentences = maxSentences||5;
+  if(!text) return '';
+  var sents=text.split(/(?<=[.!?。！？])\s+|[\r\n]{2,}/).map(function(s){return s.trim();}).filter(function(s){return s.length>20;});
+  if(sents.length===0) return '';
+  if(sents.length<=maxSentences) return sents.join(' ');
+  function tokenize(s){return s.toLowerCase().replace(/[^a-z0-9가-힣\s]/g,' ').split(/\s+/).filter(Boolean);}
+  var stop=new Set(['the','and','for','with','that','this','from','are','was','were','have','has','had','of','in','to','on','by','as','is','be','or','at','an','a','it','its','their','our','we','you','they','into','over','under','between','within','through','about','after','before','during','against','among','per','및','그리고','그러나','또는','에서','으로','에는','에','를','을','이','가','은','는','와','과','하다','했다','대한','위한']);
+  var tf={},df={},sentTokens=[];
+  for(var i=0;i<sents.length;i++){
+    var ws=tokenize(sents[i]).filter(function(w){return !stop.has(w);});
+    sentTokens.push(ws);
+    var seen={};
+    for(var j=0;j<ws.length;j++){
+      var w=ws[j]; tf[w]=(tf[w]||0)+1; if(!seen[w]){df[w]=(df[w]||0)+1; seen[w]=1;}
+    }
+  }
+  var N=sents.length;
+  var scored=[];
+  for(var k=0;k<sents.length;k++){
+    var sc=0, ws2=sentTokens[k];
+    for(var j2=0;j2<ws2.length;j2++){
+      var ww=ws2[j2];
+      var idf=Math.log((N+1)/((df[ww]||1)+1));
+      sc+=(tf[ww]||0)*idf;
+    }
+    var len=sents[k].length; var lenAdj=(len<40?0.85:(len>300?0.9:1));
+    scored.push({i:k,score:sc*lenAdj});
+  }
+  scored.sort(function(a,b){return b.score-a.score;});
+  scored=scored.slice(0,maxSentences).sort(function(a,b){return a.i-b.i;});
+  return scored.map(function(x){return sents[x.i];}).join(' ');
+}
+
+// HDP 점수
+var HDP_DICT={
+  H:['emergency','relief','response','humanitarian','displacement','refugee','cholera','outbreak','famine','flood','earthquake','evacuation','cash assistance','wash cluster','rapid'],
+  D:['development','infrastructure','education','school','clinic','health system','primary care','livelihoods','capacity building','policy','programme','investment','training','supply chain','renewable','solar','water supply','monitoring','m&e'],
+  P:['peace','cohesion','conflict','mediation','grievance','inclusive','social contract','community committee','youth','women participation','accountability','complaints','do no harm']
+};
+
+function hdpFlags(text){
+  var T=(text||'').toLowerCase();
+  function hit(arr){return arr.some(w=>T.includes(w));}
+  var H=hit(HDP_DICT.H);
+  var D=hit(HDP_DICT.D);
+  var P=hit(HDP_DICT.P);
+  var nexus=(H && D) || (H && D && P);
+  return {H:H?'H':'',D:D?'D':'',P:P?'P':'',nexus:nexus?'Y':'N'};
+}
+ return s;}
+  var H=hit(HDP_DICT.H), D=hit(HDP_DICT.D), P=hit(HDP_DICT.P);
+  if(H+D+P===0) return {H:0,D:100,P:0,label:'D 100%'};
+  var sum=H+D+P; H=Math.round(H/sum*100); D=Math.round(D/sum*100); P=100-H-D;
+  return {H:H,D:D,P:P,label:'H '+H+'% / D '+D+'% / P '+P+'%'};
+}
+function hbarHTML(score){
+  var s=(score&&typeof score==='object'&&isFinite(score.H)&&isFinite(score.D)&&isFinite(score.P))?score:{H:0,D:100,P:0,label:(score&&score.label)?score.label:'D 100%'};
+  var H=Math.max(0,Math.min(100,s.H));
+  var D=Math.max(0,Math.min(100,s.D));
+  var P=Math.max(0,Math.min(100,s.P));
+  var label=s.label||('H '+s.H+'% / D '+s.D+'% / P '+s.P+'%');
+  return ''+
+    '<div class="hbar">'+
+      '<span class="hcol-H" style="width:'+H+'%;"></span>'+
+      '<span class="hcol-D" style="width:'+D+'%;"></span>'+
+      '<span class="hcol-P" style="width:'+P+'%;"></span>'+
+    '</div>'+
+    '<div class="small">'+label+'</div>';
+}
+
+// C1~C15 규칙 분류
+var CODES={
+  C1:{name:'사업·프로젝트 개요 & 배경',kw:['background','context','objective','overview','rationale','fragile','fcv','situation analysis','needs assessment','배경','목표','맥락','현황']},
+  C2:{name:'이해관계자 분석',kw:['stakeholder','beneficiary','local government','ngo','civil society','private sector','partner','coordination','거버넌스','수혜자','참여기관']},
+  C3:{name:'논리모형 & 성과경로 (ToC)',kw:['theory of change','results chain','logic model','inputs','outputs','outcomes','impact pathway','성과경로','논리모형']},
+  C4:{name:'실행 및 운영관리',kw:['implementation','operations','workplan','sop','risk management','procurement','governance structure','현장 관리','운영','집행']},
+  C5:{name:'모니터링 & 평가 체계',kw:['monitoring','evaluation','m&e','indicator','baseline','midterm','final evaluation','데이터 수집','지표','평가']},
+  C6:{name:'성과 (Outputs & Outcomes)',kw:['output','deliverable','milestone','outcome','result','성과','산출']},
+  C7:{name:'영향 (Impact)',kw:['impact','long-term change','institutional change','지속적 변화','제도 변화','장기 효과']},
+  C8:{name:'지속가능성 & 확산 가능성',kw:['sustainability','scalability','institutionalization','handover','exit strategy','지속가능성','확산']},
+  C9:{name:'비용효율성 & 자원투입',kw:['cost-effectiveness','efficiency','value for money','budget','resource allocation','비용','예산','자원배분']},
+  C10:{name:'리스크 & 적응성',kw:['risk','mitigation','contingency','adaptation','pivot','conflict sensitivity','리스크','적응']},
+  C11:{name:'젠더 / 나이 / 포용성',kw:['gender','women','girl','youth','elderly','disability','inclusion','gbv','성평등','포용']},
+  C12:{name:'거버넌스 / 책임성 / 투명성',kw:['governance','accountability','transparency','complaints','grm','participatory','책임성','투명성']},
+  C13:{name:'환경 및 기후 민감성',kw:['climate','environment','adaptation','mitigation','resilience','emission','기후','환경']},
+  C14:{name:'교훈 & 확산 가능한 모형',kw:['lesson learned','lessons learned','good practice','case study','replication','scaling','교훈','우수사례']},
+  C15:{name:'한계 및 권고사항',kw:['limitation','constraint','challenge','recommendation','policy recommendation','한계','권고']}
+};
+function classifyC15(text,topN){
+  topN=topN||3;
+  var T=(text||'').toLowerCase();
+  var score={}, ranked=[], k, cfg;
+  for(k in CODES){
+    cfg=CODES[k];
+    var s=0; for(var i=0;i<cfg.kw.length;i++){ if(T.indexOf(cfg.kw[i].toLowerCase())>=0) s++; }
+    score[k]=s;
+  }
+  for(k in score){ if(score[k]>0) ranked.push({code:k,name:CODES[k].name,s:score[k]}); }
+  ranked.sort(function(a,b){return b.s-a.s;});
+  return ranked.slice(0,topN);
+}
+function renderC15Badges(arr){
+  if(!arr||!arr.length) return '<span class="small" style="color:#8698b0">—</span>';
+  return arr.map(function(x){return '<span class="badge" title="'+x.name+'">'+x.code+'</span>';}).join(' ');
+}
+
+// DB/노트
+function getDB(){return JSON.parse(localStorage.getItem(DB_KEY)||'{"notes":[]}');}
+function setDB(db){localStorage.setItem(DB_KEY,JSON.stringify(db));}
+function migrateNotesIfNeeded(){
+  try{
+    var db=getDB(), changed=false;
+    db.notes=(db.notes||[]).map(function(n){
+      if(!n.hdp||!isFinite(n.hdp&&n.hdp.H)){
+        var t=[n.title,n.summary,n.body].filter(Boolean).join(' ');
+        var sc=hdpScore(t); n.hdp=sc; n.hdpLabel=sc.label; changed=true;
+      }
+      if(!n.hdpLabel){ n.hdpLabel='H '+n.hdp.H+'% / D '+n.hdp.D+'% / P '+n.hdp.P+'%'; changed=true; }
+      if(!n.c15||!n.c15.length){
+        var t2=[n.title,n.summary,n.body].filter(Boolean).join(' ');
+        n.c15=classifyC15(t2,3); changed=true;
+      }
+      return n;
+    });
+    if(changed) setDB(db);
+  }catch(e){ console.warn('migrateNotesIfNeeded failed:',e); }
+}
+function renderNotes(filter){
+  filter=(filter||'').toLowerCase();
+  var box=document.getElementById('notes-list');
+  var db=getDB();
+  if(!db.notes.length){ box.innerHTML='<div class="small">저장된 노트가 없습니다.</div>'; return; }
+  var html='';
+  db.notes.forEach(function(n){
+    var hay=[n.title,n.summary,n.country,n.hdpLabel].concat((n.c15||[]).map(function(x){return x.code+' '+x.name;})).join(' ').toLowerCase();
+    if(filter && hay.indexOf(filter)<0) return;
+    html+= '<div class="card">'
+         +   '<div class="flex" style="justify-content:space-between">'
+         +     '<div><strong>'+n.title+'</strong></div>'
+         +     '<div class="small mono">'+new Date(n.created).toISOString().slice(0,10)+'</div>'
+         +   '</div>'
+         +   '<div class="small" style="margin:6px 0"><em>'+(n.country||'')+'</em> · <span class="badge">'+(n.hdpLabel||'')+'</span></div>'
+         +   '<div style="margin:6px 0">'+hbarHTML(n.hdp)+'</div>'
+         +   '<div class="small" style="margin:4px 0">'+renderC15Badges(n.c15)+'</div>'
+         +   '<div>'+(n.summary||'<span class="small">요약 없음</span>')+'</div>'
+         +   '<div class="flex" style="margin-top:6px">'
+         +     (n.url?'<a href="'+n.url+'" target="_blank" rel="noopener">원문 링크</a>':'')
+         +     '<button data-id="'+n.id+'" class="btn-del small">삭제</button>'
+         +   '</div>'
+         + '</div>';
+  });
+  box.innerHTML=html;
+  [].forEach.call(box.querySelectorAll('.btn-del'), function(b){
+    b.onclick=function(){
+      var id=b.getAttribute('data-id'); var db2=getDB();
+      db2.notes=db2.notes.filter(function(x){return x.id!==id;});
+      setDB(db2); renderNotes(filter);
+    };
+  });
+}
+
+// ReliefWeb 폴백 fetch
+async function tryFetchBodies(url,bodies){
+  var errors=[];
+  for(var i=0;i<bodies.length;i++){
+    try{
+      var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bodies[i])});
+      if(res.ok){ return {ok:true,data:await res.json(),attempted:bodies[i],log:errors}; }
+      var txt=await res.text().catch(function(){return String(res.status);});
+      errors.push('HTTP '+res.status+' — '+txt.slice(0,200));
+    }catch(e){ errors.push('EXC '+e.message); }
+  }
+  return {ok:false,log:errors};
+}
+
+async function rwFetch(){
+  var out=document.getElementById('rw-results');
+  var st=document.getElementById('rw-status');
+  if(st) st.textContent='요청 시작…'; if(out) out.innerHTML='';
+
+  var daySpan=Number(document.getElementById('rw-days').value||365);
+  var limit=Math.min(Number(document.getElementById('rw-limit').value||300),1000);
+
+  var url='https://api.reliefweb.int/v1/reports?appname=HyunKim+recap_km_lite+a5Ttg7U8km-lite';
+  var sinceISO=new Date(Date.now()-daySpan*86400000).toISOString().slice(0,10);
+  var names=pickedISO3.length? RECAP_MAP.filter(function(d){return pickedISO3.indexOf(d.iso3)>=0;}).map(function(d){return d.name;}) : RECAP_NAMES;
+  var iso3 =pickedISO3.length? pickedISO3 : RECAP_ISO3;
+
+  var fields={include:['id','title','url','body','body-html','country','source','theme','disaster_type','date.created']};
+  var sort=["date.created:desc"];
+  var bodies=[
+    {limit:limit,offset:0,filter:{operator:'AND',conditions:[{field:'country.iso3',value:iso3},{field:'date.created',value:{from:sinceISO}}]},fields:fields,sort:sort},
+    {limit:limit,offset:0,filter:{operator:'AND',conditions:[{field:'country',value:names},{field:'date.created',value:{from:sinceISO}}]},fields:fields,sort:sort},
+    {limit:limit,offset:0,filter:{operator:'AND',conditions:[{field:'country',value:names},{field:'date.created',range:{from:sinceISO}}]},fields:fields,sort:sort},
+    {limit:limit,offset:0,filter:{operator:'AND',conditions:[{field:'country',value:names},{field:'date.created',operator:">=",value:sinceISO}]},fields:fields,sort:sort}
+  ];
+  var result=await tryFetchBodies(url,bodies);
+  if(!result.ok){
+    if(st) st.textContent='불러오기 실패';
+    out.innerHTML='<div class="small err">'+result.log.map(function(e){return '• '+e;}).join('<br/>')+'</div>';
+    console.error('ReliefWeb 요청 실패 로그:', result.log);
+    return;
+  }
+  if(st) st.textContent='완료 ('+new Date().toLocaleTimeString()+')';
+
+  var data=result.data;
+  var items=(data&&data.data?data.data:[]).map(function(r){
+    var f=r.fields||{};
+    var raw=(f['body-html']||'').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ');
+    var body=(f.body&&String(f.body).trim().length>0)?f.body:raw;
+    var metaTxt=[f.title,(f.theme||[]).map(function(t){return t.name;}).join(', '),
+      (f.disaster_type||[]).map(function(d){return d.name;}).join(', '),
+      (f.source||[]).map(function(s){return s.name;}).join(', '),
+      (f.country||[]).map(function(c){return c.name;}).join(', ')].join(' | ');
+    var hdp=hdpScore(metaTxt+' '+body);
+    var c15=classifyC15(metaTxt+' '+body,3);
+    return {
+      id:r.id,title:f.title||'',url:f.url||'',created:f['date.created']||'',
+      country:(f.country||[]).map(function(c){return c.name;}).join(', '),
+      source:(f.source||[]).map(function(s){return s.name;}).join(', '),
+      theme:(f.theme||[]).map(function(t){return t.name;}).join(', '),
+      type:(f.disaster_type||[]).map(function(d){return d.name;}).join(', '),
+      body:body, hdp:hdp, c15:c15
+    };
+  });
+
+  var rows='';
+  for(var i=0;i<items.length;i++){
+    var it=items[i];
+    rows+= '<tr>'
+         +   '<td><input type="checkbox" class="rw-check" data-i="'+i+'"></td>'
+         +   '<td class="title-cell" style="cursor:pointer;text-decoration:underline">'+it.title+'</td>'
+         +   '<td>'+it.country+'</td>'
+         +   '<td>'+it.source+'</td>'
+         +   '<td>'+hbarHTML(it.hdp)+'</td>'
+         +   '<td>'+renderC15Badges(it.c15)+'</td>'
+         +   '<td><a href="'+it.url+'" target="_blank" rel="noopener">링크</a></td>'
+         + '</tr>';
+  }
+  out.innerHTML=
+    '<table>'+
+      '<thead><tr><th></th><th>제목</th><th>국가</th><th>출처</th><th>HDP%</th><th>분류(C1~C15)</th><th>URL</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table>'+
+    '<details style="margin-top:8px"><summary class="small">사용된 필터 바디(참고)</summary><pre class="small mono" style="white-space:pre-wrap">'+
+    (JSON.stringify(result.attempted,null,2))+
+    '</pre></details>';
+
+  // 제목 클릭 → 모달
+  [].forEach.call(document.querySelectorAll('#rw-results tbody .title-cell'), function(td,idx){
+    td.onclick=function(){
+      var it=items[idx];
+      var text=[it.title,it.theme,it.type,it.source,it.country,it.body].filter(Boolean).join(' | ');
+      var sumTxt=summarizeText(text,5)||'요약을 생성할 수 없습니다.';
+      document.getElementById('summary-title').textContent=it.title;
+      document.getElementById('summary-meta').textContent=it.country+' · '+it.source;
+      document.getElementById('summary-hdp').innerHTML=
+        hbarHTML(it.hdp) + (it.c15&&it.c15.length?('<div class="small" style="margin-top:6px">'+renderC15Badges(it.c15)+'</div>'):'');
+      document.getElementById('summary-content').innerHTML='<p>'+sumTxt+'</p><hr/><p><a href="'+it.url+'" target="_blank" rel="noopener">원문 보기</a></p>';
+      document.getElementById('summary-modal').style.display='flex';
+    };
+  });
+}
+
+// 모달 닫기
+document.getElementById('summary-close').onclick=function(){document.getElementById('summary-modal').style.display='none';};
+document.getElementById('summary-modal').onclick=function(e){ if(e.target.id==='summary-modal') e.currentTarget.style.display='none'; };
+window.addEventListener('keydown',function(e){ if(e.key==='Escape'){document.getElementById('summary-modal').style.display='none';document.getElementById('country-modal').style.display='none';}});
+
+// 저장(메타 기반 요약/HDP/분류 함께 저장)
+document.getElementById('rw-to-notes').onclick=function(){
+  var checks=[].filter.call(document.querySelectorAll('.rw-check'), function(cb){return cb.checked;});
+  if(!checks.length){ alert('저장할 항목을 선택하세요'); return; }
+  var rows=[].slice.call(document.querySelectorAll('#rw-results tbody tr'));
+  var db=getDB(); var now=Date.now();
+  checks.forEach(function(cb){
+    var i=Number(cb.dataset.i); var tr=rows[i];
+    var title=tr.children[1].textContent.trim();
+    var country=tr.children[2].textContent.trim();
+    var source=tr.children[3].textContent.trim();
+    var url=tr.children[6].querySelector('a')?tr.children[6].querySelector('a').href:'';
+    var meta=[title,country,source].join(' | ');
+    var summary=summarizeText(meta,3)||meta;
+    var sc=hdpScore(meta);
+    var c15=classifyC15(meta,3);
+    var id='rw-'+i+'-'+title.slice(0,20).replace(/\W+/g,'_');
+    if(db.notes.some(function(n){return n.id===id;})) return;
+    db.notes.unshift({id:id,title:title,body:'',country:country,source:source,url:url,created:now,summary:summary,hdp:sc,hdpLabel:sc.label,c15:c15});
+  });
+  setDB(db); renderNotes();
+  var st=document.getElementById('rw-status'); if(st) st.textContent=checks.length+'개 노트 저장 완료';
+};
+
+// 초기 렌더/바인딩
+migrateNotesIfNeeded();
+renderNotes();
+
+document.addEventListener('DOMContentLoaded', function(){
+  var btn=document.getElementById('rw-fetch'); if(btn) btn.addEventListener('click', rwFetch);
+  document.getElementById('notes-refresh').onclick=function(){ renderNotes(document.getElementById('notes-q').value); };
+  document.getElementById('notes-clear').onclick=function(){ if(!confirm('모든 노트를 삭제합니다. 계속할까요?')) return; setDB({notes:[]}); renderNotes(''); };
+  document.getElementById('notes-q').addEventListener('input', function(e){ renderNotes(e.target.value); });
+});
+</script>
+
+<!-- Dashboard Section -->
+<section id="dashboard" style="margin-top:20px;">
+  <h2>📊 HDP & C1–C15 Dashboard</h2>
+  <div style="display:flex;gap:20px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:300px;">
+      <canvas id="hdpChart"></canvas>
+    </div>
+    <div style="flex:1;min-width:300px;">
+      <canvas id="c15Chart"></canvas>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function renderDashboard(data){
+  if(!data.length) return;
+  const h=data.filter(d=>d.hdp.H==='H').length;
+  const d=data.filter(d=>d.hdp.D==='D').length;
+  const p=data.filter(d=>d.hdp.P==='P').length;
+  const n=data.filter(d=>d.hdp.nexus==='Y').length;
+
+  const hdpCtx=document.getElementById('hdpChart').getContext('2d');
+  new Chart(hdpCtx,{type:'doughnut',
+    data:{labels:['H','D','P','Nexus(Y)'],datasets:[{data:[h,d,p,n]}]},
+    options:{plugins:{legend:{position:'bottom'}}}
+  });
+
+  const cStats={};
+  data.forEach(d=>(d.c15||[]).forEach(c=>cStats[c]=(cStats[c]||0)+1));
+  const labels=Object.keys(cStats);
+  const values=Object.values(cStats);
+  const c15Ctx=document.getElementById('c15Chart').getContext('2d');
+  new Chart(c15Ctx,{type:'bar',
+    data:{labels,datasets:[{data:values}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}}}
+  });
+}
+</script>
+
+</body>
+</html>
