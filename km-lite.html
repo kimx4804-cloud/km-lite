@@ -3,115 +3,235 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>RECAP 지식관리체계 </title>
+  <title>RECAP 경량 지식관리체계 (20개국 자동수집 · TF-IDF 요약 · HDP · C1–C15)</title>
   <style>
-    body{font-family:system-ui,Arial,sans-serif;background:#0f1620;color:#e6eef8;margin:0;padding:16px}
-    textarea,input,button{border-radius:6px;padding:8px;border:1px solid #353245;background:#182030;color:#e6eef8}
-    table{width:100%;border-collapse:collapse;margin-top:20px}
-    th,td{border:1px solid #444;padding:8px;text-align:left}
-    th{background:#1f2838}
-    canvas{max-width:600px}
+    :root{--bg:#0f1620;--fg:#e6eef8;--mut:#8aa0bb;--line:#253245}
+    body{font-family:system-ui,Arial,sans-serif;background:var(--bg);color:var(--fg);margin:0}
+    header{padding:16px 20px}
+    main{padding:0 20px 40px}
+    h1{margin:12px 0}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    label{color:var(--mut);font-size:14px}
+    input,button,select,textarea{border:1px solid var(--line);background:#182030;color:var(--fg);border-radius:8px;padding:8px}
+    button{cursor:pointer}
+    textarea{width:100%;min-height:110px}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th,td{border:1px solid var(--line);padding:8px;text-align:left}
+    th{background:#1b2432}
+    #dash{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media (max-width:900px){#dash{grid-template-columns:1fr}}
+    .hint{color:var(--mut);font-size:12px}
+    #log{white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;border:1px dashed var(--line);padding:8px;border-radius:8px;margin-top:10px}
   </style>
 </head>
 <body>
-  <h2>RECAP 지식관리체계 </h2>
-  <p>ReliefWeb AppName: <strong>HyunKim+recap_km_lite+a5Ttg7U8</strong></p>
-  <textarea id="inputText" placeholder="텍스트 또는 요약을 입력하세요"></textarea>
-  <button onclick="classifyText()">분류하기</button>
-  <button onclick="fetchReliefWeb()">가져오기</button>
+<header>
+  <h1>RECAP 경량 지식관리체계</h1>
+  <div class="hint">ReliefWeb AppName: <b>HyunKim+recap_km_lite+a5Ttg7U8</b></div>
+</header>
 
-  <table id="resultTable">
-    <thead><tr><th>ID</th><th>H</th><th>D</th><th>P</th><th>Nexus</th><th>C1~C15</th></tr></thead>
+<main>
+  <section class="row" aria-label="수집 옵션">
+    <div>
+      <label for="days">최근 일수</label><br/>
+      <input id="days" name="days" type="number" value="365" min="1" />
+    </div>
+    <div>
+      <label for="limit">최대 개수</label><br/>
+      <input id="limit" name="limit" type="number" value="300" min="1" />
+    </div>
+    <div>
+      <label for="country">국가 필터</label><br/>
+      <input id="country" name="country" placeholder="예: Jordan; Lebanon (세미콜론 구분)"/>
+    </div>
+    <div style="align-self:flex-end">
+      <button id="btnFetch" type="button">가져오기</button>
+    </div>
+  </section>
+
+  <section style="margin-top:12px">
+    <label for="note">메모 입력(수동 분류 테스트)</label>
+    <textarea id="note" placeholder="텍스트를 입력한 뒤 ‘수동 분류’ 버튼을 눌러보세요."></textarea>
+    <div class="row">
+      <button id="btnClassify" type="button">수동 분류</button>
+      <button id="btnClear" type="button">전체삭제</button>
+    </div>
+  </section>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th>ID</th><th>H</th><th>D</th><th>P</th><th>Nexus(Y/N)</th><th>C1–C15</th>
+      </tr>
+    </thead>
     <tbody></tbody>
   </table>
 
-  <h3>📊 HDP & C1–C15 Dashboard</h3>
-  <canvas id="hdpChart"></canvas>
-  <canvas id="c15Chart"></canvas>
+  <section id="dash" aria-label="대시보드">
+    <div>
+      <h3>HDP 요약</h3>
+      <canvas id="hdpChart" height="220"></canvas>
+    </div>
+    <div>
+      <h3>C1–C15 분포</h3>
+      <canvas id="c15Chart" height="220"></canvas>
+    </div>
+  </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-  (function(){
+  <div id="log" aria-live="polite"></div>
+</main>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/* IIFE: 전역 오염 및 illegal return 방지 */
+(function(){
+
+  // ====== 설정 ======
+  const APPNAME = "HyunKim+recap_km_lite+a5Ttg7U8";
+  // GitHub Pages/브라우저 CORS 회피용 프록시 사용 (필요시 false로)
+  const USE_PROXY = true;
+  const PROXY = "https://api.allorigins.win/raw?url=";
+
+  // ====== HDP 사전 & 분류 ======
   const HDP_DICT = {
-    H:['humanitarian','emergency','disaster','crisis','refugee','relief','aid'],
-    D:['development','education','livelihood','infrastructure','policy','training','investment'],
-    P:['peace','conflict','stability','governance','reconciliation','social cohesion']
+    H: ['humanitarian','emergency','disaster','crisis','refugee','relief','aid','response'],
+    D: ['development','education','livelihood','infrastructure','policy','training','investment'],
+    P: ['peace','conflict','stability','governance','reconciliation','cohesion','accountability']
   };
-  const CODES=['C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','C11','C12','C13','C14','C15'];
+  const CODES = ['C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','C11','C12','C13','C14','C15'];
 
   function hdpFlags(text){
-    const T=text.toLowerCase();
-    function hit(arr){return arr.some(w=>T.includes(w));}
+    const T=(text||'').toLowerCase();
+    const hit = arr => arr.some(w=>T.includes(w));
     const H=hit(HDP_DICT.H), D=hit(HDP_DICT.D), P=hit(HDP_DICT.P);
-    const nexus=(H&&D)||(H&&D&&P);
-    return {H:H?'H':'',D:D?'D':'',P:P?'P':'',nexus:nexus?'Y':'N'};
+    const nexus = (H && D) || (H && D && P);
+    return {H:H?'H':'', D:D?'D':'', P:P?'P':'', nexus: nexus?'Y':'N'};
   }
 
+  // placeholder 분류기(데모용) — 실제 키워드 매핑으로 교체 가능
   function classifyC15(text){
-    // placeholder: random for demo
     return CODES.filter(()=>Math.random()>0.9);
   }
 
-  function classifyText(){
-    const txt=document.getElementById("inputText").value.trim();
-    if(!txt){alert("내용을 입력하세요.");return;}
-    const id=Date.now();
-    const hdp=hdpFlags(txt);
-    const c15=classifyC15(txt);
-    const stored=JSON.parse(localStorage.getItem("kmLiteData")||"[]");
-    stored.push({id,hdp,c15});
-    localStorage.setItem("kmLiteData",JSON.stringify(stored));
-    renderTable(stored);renderDashboard(stored);
+  // ====== 저장/표시 ======
+  function loadStore(){
+    try{ return JSON.parse(localStorage.getItem('kmLiteData')||'[]'); }
+    catch(e){ return []; }
+  }
+  function saveStore(arr){
+    localStorage.setItem('kmLiteData', JSON.stringify(arr||[]));
   }
 
   function renderTable(data){
-    const tbody=document.querySelector("#resultTable tbody");
+    const tbody = document.querySelector('#tbl tbody');
     tbody.innerHTML='';
     data.forEach(d=>{
-      const tr=document.createElement("tr");
-      tr.innerHTML=`<td>${d.id}</td><td>${d.hdp.H}</td><td>${d.hdp.D}</td>
-                    <td>${d.hdp.P}</td><td>${d.hdp.nexus}</td><td>${d.c15.join(', ')}</td>`;
+      const tr=document.createElement('tr');
+      tr.innerHTML = `
+        <td>${d.id}</td>
+        <td>${d.hdp.H}</td>
+        <td>${d.hdp.D}</td>
+        <td>${d.hdp.P}</td>
+        <td>${d.hdp.nexus}</td>
+        <td>${(d.c15||[]).join(', ')}</td>`;
       tbody.appendChild(tr);
     });
   }
 
+  let hdpChart, c15Chart;
   function renderDashboard(data){
-    if(!data.length)return;
-    const h=data.filter(d=>d.hdp.H).length;
-    const d=data.filter(d=>d.hdp.D).length;
-    const p=data.filter(d=>d.hdp.P).length;
-    const n=data.filter(d=>d.hdp.nexus==='Y').length;
-    const hdpCtx=document.getElementById('hdpChart').getContext('2d');
-    new Chart(hdpCtx,{type:'doughnut',
+    if(!data.length){ return; }
+    const h = data.filter(d=>d.hdp.H==='H').length;
+    const d = data.filter(d=>d.hdp.D==='D').length;
+    const p = data.filter(d=>d.hdp.P==='P').length;
+    const n = data.filter(d=>d.hdp.nexus==='Y').length;
+
+    const hctx = document.getElementById('hdpChart').getContext('2d');
+    const cctx = document.getElementById('c15Chart').getContext('2d');
+    if(hdpChart) hdpChart.destroy();
+    if(c15Chart) c15Chart.destroy();
+
+    hdpChart = new Chart(hctx, {
+      type:'doughnut',
       data:{labels:['H','D','P','Nexus(Y)'],datasets:[{data:[h,d,p,n]}]},
-      options:{plugins:{legend:{position:'bottom'}}}});
+      options:{plugins:{legend:{position:'bottom'}}}
+    });
+
     const cStats={};
-    data.forEach(d=>(d.c15||[]).forEach(c=>cStats[c]=(cStats[c]||0)+1));
-    const c15Ctx=document.getElementById('c15Chart').getContext('2d');
-    new Chart(c15Ctx,{type:'bar',
+    data.forEach(x => (x.c15||[]).forEach(c => cStats[c]=(cStats[c]||0)+1));
+    c15Chart = new Chart(cctx, {
+      type:'bar',
       data:{labels:Object.keys(cStats),datasets:[{data:Object.values(cStats)}]},
-      options:{indexAxis:'y',plugins:{legend:{display:false}}}});
+      options:{indexAxis:'y',plugins:{legend:{display:false}}}
+    });
   }
 
-  // ReliefWeb fetch test
-  function fetchReliefWeb(){
-    const proxy="https://api.allorigins.win/raw?url=";
-    const url="https://api.reliefweb.int/v1/disasters?appname=HyunKim+recap_km_lite+a5Ttg7U8";
-    fetch(proxy+encodeURIComponent(url))
-      .then(r=>r.json())
-      .then(j=>{
-        console.log("✅ ReliefWeb data:",j);
-        alert("ReliefWeb 데이터 "+(j.data?.length||0)+"건 로드됨 (콘솔 참조)");
-      })
-      .catch(e=>console.error("❌ Fetch error:",e));
+  function log(msg){
+    const box=document.getElementById('log');
+    box.textContent = (new Date().toLocaleTimeString()) + " — " + msg;
   }
 
-  // 초기 로드
-  const saved=JSON.parse(localStorage.getItem("kmLiteData")||"[]");
-  renderTable(saved);renderDashboard(saved);
+  // ====== 수동 분류 버튼 ======
+  document.getElementById('btnClassify').addEventListener('click', ()=>{
+    const txt = document.getElementById('note').value.trim();
+    if(!txt){ alert('텍스트를 입력하세요.'); return; }
+    const row = { id: Date.now(), hdp: hdpFlags(txt), c15: classifyC15(txt) };
+    const store = loadStore(); store.push(row); saveStore(store);
+    renderTable(store); renderDashboard(store);
+    log('수동 분류 1건 저장');
+  });
 
-  })();
-  </script>
+  // ====== 전체삭제 ======
+  document.getElementById('btnClear').addEventListener('click', ()=>{
+    saveStore([]); renderTable([]); renderDashboard([]);
+    log('저장 데이터 전체 삭제');
+  });
+
+  // ====== ReliefWeb 가져오기 ======
+  document.getElementById('btnFetch').addEventListener('click', async ()=>{
+    const days = +document.getElementById('days').value || 365;
+    const limit = +document.getElementById('limit').value || 300;
+    const countries = (document.getElementById('country').value||'')
+                      .split(';').map(s=>s.trim()).filter(Boolean);
+
+    // 간단한 예: disasters 엔드포인트 사용 (필요 시 다른 컬렉션으로 교체)
+    const base = `https://api.reliefweb.int/v1/disasters?appname=${encodeURIComponent(APPNAME)}&limit=${limit}`;
+    const since = new Date(Date.now()-days*86400000).toISOString().slice(0,10);
+    const filterDate = `&filter[conditions][0][field]=date.changed&filter[conditions][0][value]=${since}&filter[conditions][0][operator]=gte`;
+    const filterCountry = countries.length
+      ? `&filter[conditions][1][field]=country.name&filter[conditions][1][value]=${encodeURIComponent(countries.join('|'))}&filter[conditions][1][operator]=like`
+      : '';
+
+    const url = base + filterDate + filterCountry;
+    const finalUrl = USE_PROXY ? (PROXY + encodeURIComponent(url)) : url;
+
+    try{
+      const res = await fetch(finalUrl);
+      const j = await res.json();
+      const data = (j.data||[]).map((it)=> {
+        const text = [
+          it.fields?.name, it.fields?.description, it.fields?.type?.name,
+          (it.fields?.country||[]).map(c=>c.name).join(', ')
+        ].filter(Boolean).join(' | ');
+        return { id: it.id || (it.fields?.name||Date.now()), hdp: hdpFlags(text), c15: classifyC15(text) };
+      });
+
+      const store = loadStore().concat(data);
+      saveStore(store);
+      renderTable(store); renderDashboard(store);
+      log(`ReliefWeb 데이터 ${data.length}건 로드 및 저장`);
+    }catch(err){
+      console.error(err);
+      log('ReliefWeb 로드 오류(콘솔 참조). 프록시 설정/네트워크를 점검하세요.');
+    }
+  });
+
+  // ====== 초기 렌더 ======
+  const init = loadStore();
+  renderTable(init); renderDashboard(init);
+  log('초기화 완료');
+
+})();
+</script>
 </body>
 </html>
