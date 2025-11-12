@@ -1,237 +1,552 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>RECAP 경량 지식관리체계 (20개국 자동수집 · TF-IDF 요약 · HDP · C1–C15)</title>
-  <style>
-    :root{--bg:#0f1620;--fg:#e6eef8;--mut:#8aa0bb;--line:#253245}
-    body{font-family:system-ui,Arial,sans-serif;background:var(--bg);color:var(--fg);margin:0}
-    header{padding:16px 20px}
-    main{padding:0 20px 40px}
-    h1{margin:12px 0}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    label{color:var(--mut);font-size:14px}
-    input,button,select,textarea{border:1px solid var(--line);background:#182030;color:var(--fg);border-radius:8px;padding:8px}
-    button{cursor:pointer}
-    textarea{width:100%;min-height:110px}
-    table{width:100%;border-collapse:collapse;margin-top:16px}
-    th,td{border:1px solid var(--line);padding:8px;text-align:left}
-    th{background:#1b2432}
-    #dash{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    @media (max-width:900px){#dash{grid-template-columns:1fr}}
-    .hint{color:var(--mut);font-size:12px}
-    #log{white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;border:1px dashed var(--line);padding:8px;border-radius:8px;margin-top:10px}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>km-lite — RECAP 20개국 + TF-IDF 요약 + HDP% + C1~C15 분류</title>
+<style>
+:root{--bg:#0b0f14;--fg:#e6eef8;--mut:#8aa0bb;--line:#253245}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,Arial,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:16px}
+h2{margin:0 0 12px}
+textarea,input,button{border-radius:8px;padding:.45rem .6rem;font-size:14px;border:1px solid var(--line);background:#0f1620;color:var(--fg)}
+button{cursor:pointer}
+.small{color:var(--mut);font-size:12px}
+.mono{font-family:ui-monospace,Consolas,Menlo,monospace}
+.err{color:#ffb4b4}
+hr{border:none;border-top:1px solid var(--line);margin:12px 0}
+.flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:8px;background:#101826}
+.badge{display:inline-block;padding:2px 6px;border-radius:999px;font-size:11px;border:1px solid var(--line);margin-right:4px;margin-bottom:2px}
+.badge-H{background:rgba(255,99,132,0.1);border-color:rgba(255,99,132,0.6)}
+.badge-D{background:rgba(54,162,235,0.1);border-color:rgba(54,162,235,0.6)}
+.badge-P{background:rgba(255,206,86,0.1);border-color:rgba(255,206,86,0.6)}
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{border:1px solid var(--line);padding:6px 8px;font-size:13px}
+th{background:#111a28}
+input::placeholder,textarea::placeholder{color:#4d5a6d}
+#rw-table-wrapper{max-height:400px;overflow:auto;margin-top:8px;border:1px solid var(--line);border-radius:8px}
+#notes-panel{margin-top:16px}
+#summary-modal{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:20}
+#summary-box{background:#101826;border-radius:10px;max-width:800px;width:90%;max-height:80vh;overflow:auto;padding:16px;border:1px solid var(--line)}
+#summary-close{float:right;cursor:pointer}
+#hdp-chart-wrap{margin-top:16px;border:1px solid var(--line);border-radius:8px;padding:8px}
+canvas{max-width:100%}
+</style>
 </head>
 <body>
-<header>
-  <h1>RECAP 경량 지식관리체계</h1>
-  <div class="hint">ReliefWeb AppName: <b>HyunKim+recap_km_lite+a5Ttg7U8</b></div>
-</header>
+<h2>RECAP 경량 지식관리체계 (20개국 자동수집 · TF-IDF 요약 · HDP% · C1~C15)</h2>
+<div class="small">
+  로컬 서버에서 여세요(예: <span class="mono">python -m http.server 8000</span>), 저장된 요약·HDP·분류(C1~C15)가 localStorage에 저장됩니다.
+</div>
 
-<main>
-  <section class="row" aria-label="수집 옵션">
-    <div>
-      <label for="days">최근 일수</label><br/>
-      <input id="days" name="days" type="number" value="365" min="1" />
-    </div>
-    <div>
-      <label for="limit">최대 개수</label><br/>
-      <input id="limit" name="limit" type="number" value="300" min="1" />
-    </div>
-    <div>
-      <label for="country">국가 필터</label><br/>
-      <input id="country" name="country" placeholder="예: Jordan; Lebanon (세미콜론 구분)"/>
-    </div>
-    <div style="align-self:flex-end">
-      <button id="btnFetch" type="button">가져오기</button>
-    </div>
-  </section>
+<hr/>
 
-  <section style="margin-top:12px">
-    <label for="note">메모 입력(수동 분류 테스트)</label>
-    <textarea id="note" placeholder="텍스트를 입력한 뒤 ‘수동 분류’ 버튼을 눌러보세요."></textarea>
-    <div class="row">
-      <button id="btnClassify" type="button">수동 분류</button>
-      <button id="btnClear" type="button">전체삭제</button>
-    </div>
-  </section>
+<div class="small" style="margin-bottom:4px">대상국(참고용)</div>
+<div class="small">
+Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Principe, Somalia, South Sudan, Zimbabwe, Armenia, Iran, Jordan, Lebanon, Palestine, Syria, Yemen, Papua New Guinea, Solomon Islands, Timor-Leste
+</div>
 
-  <table id="tbl">
-    <thead>
-      <tr>
-        <th>ID</th><th>H</th><th>D</th><th>P</th><th>Nexus(Y/N)</th><th>C1–C15</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<hr/>
 
-  <section id="dash" aria-label="대시보드">
-    <div>
-      <h3>HDP 요약</h3>
-      <canvas id="hdpChart" height="220"></canvas>
-    </div>
-    <div>
-      <h3>C1–C15 분포</h3>
-      <canvas id="c15Chart" height="220"></canvas>
-    </div>
-  </section>
+<div class="flex small">
+  <div>
+    <label for="rw-days">최근 일수</label><br/>
+    <input id="rw-days" type="number" value="365" min="1" style="width:80px"/>
+  </div>
+  <div>
+    <label for="rw-limit">최대 개수</label><br/>
+    <input id="rw-limit" type="number" value="300" min="1" style="width:80px"/>
+  </div>
+  <div>
+    <label for="rw-country">국가 필터</label><br/>
+    <input id="rw-country" placeholder="예: Jordan; Lebanon" style="min-width:220px"/>
+  </div>
+  <div style="align-self:flex-end">
+    <button id="rw-fetch">가져오기</button>
+  </div>
+  <div id="rw-status" class="small" style="min-width:160px"></div>
+</div>
 
-  <div id="log" aria-live="polite"></div>
-</main>
+<div id="rw-table-wrapper">
+  <div id="rw-out" class="small">아직 불러온 항목이 없습니다.</div>
+</div>
+
+<div class="small" style="margin-top:4px">
+  체크 후 저장하면 하단 패널에 누적됩니다.
+</div>
+
+<div style="margin-top:8px">
+  <button id="rw-save-selected">선택 항목 노트로 저장(요약 포함)</button>
+</div>
+
+<hr/>
+
+<div id="notes-panel">
+  <div class="flex">
+    <strong>저장된 노트/요약</strong>
+    <input id="notes-q" placeholder="검색(제목·요약·국가·분류코드)" style="flex:1;min-width:180px"/>
+    <button id="notes-refresh">새로고침</button>
+    <button id="notes-clear" title="모든 노트 삭제">전체삭제</button>
+  </div>
+  <div id="notes-list" class="small" style="margin-top:8px"></div>
+</div>
+
+<!-- 요약 모달 -->
+<div id="summary-modal" class="modal">
+  <div id="summary-box">
+    <span id="summary-close">✕</span>
+    <div id="summary-title" style="font-weight:bold;font-size:18px;margin-bottom:12px;"></div>
+    <div class="small" id="summary-meta" style="margin-bottom:8px;"></div>
+    <div id="summary-body" style="white-space:pre-wrap;font-size:13px;"></div>
+  </div>
+</div>
+
+<!-- HDP & C1–C15 대시보드 -->
+<div id="hdp-chart-wrap">
+  <div class="flex" style="justify-content:space-between;align-items:center">
+    <strong>📊 HDP & C1–C15 Dashboard</strong>
+    <span class="small">저장된 노트 기준</span>
+  </div>
+  <div class="flex" style="margin-top:8px">
+    <canvas id="hdp-chart" height="120"></canvas>
+    <canvas id="c15-chart" height="120"></canvas>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-/* IIFE: 전역 오염 및 illegal return 방지 */
-(function(){
-
-  // ====== 설정 ======
-  const APPNAME = "HyunKim+recap_km_lite+a5Ttg7U8";
-  // GitHub Pages/브라우저 CORS 회피용 프록시 사용 (필요시 false로)
-  const USE_PROXY = true;
-  const PROXY = "https://api.allorigins.win/raw?url=";
-
-  // ====== HDP 사전 & 분류 ======
-  const HDP_DICT = {
-    H: ['humanitarian','emergency','disaster','crisis','refugee','relief','aid','response'],
-    D: ['development','education','livelihood','infrastructure','policy','training','investment'],
-    P: ['peace','conflict','stability','governance','reconciliation','cohesion','accountability']
-  };
-  const CODES = ['C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','C11','C12','C13','C14','C15'];
-
-  function hdpFlags(text){
-    const T=(text||'').toLowerCase();
-    const hit = arr => arr.some(w=>T.includes(w));
-    const H=hit(HDP_DICT.H), D=hit(HDP_DICT.D), P=hit(HDP_DICT.P);
-    const nexus = (H && D) || (H && D && P);
-    return {H:H?'H':'', D:D?'D':'', P:P?'P':'', nexus: nexus?'Y':'N'};
+// ---------------------- 유틸 ----------------------
+function getDB(){
+  try{
+    var raw=localStorage.getItem('km-lite-db');
+    if(!raw) return {notes:[]};
+    var parsed=JSON.parse(raw);
+    if(!parsed.notes) parsed.notes=[];
+    return parsed;
+  }catch(e){
+    console.warn('DB parse 실패',e);
+    return {notes:[]};
   }
+}
+function setDB(db){
+  localStorage.setItem('km-lite-db', JSON.stringify(db||{notes:[]}));
+}
 
-  // placeholder 분류기(데모용) — 실제 키워드 매핑으로 교체 가능
-  function classifyC15(text){
-    return CODES.filter(()=>Math.random()>0.9);
-  }
-
-  // ====== 저장/표시 ======
-  function loadStore(){
-    try{ return JSON.parse(localStorage.getItem('kmLiteData')||'[]'); }
-    catch(e){ return []; }
-  }
-  function saveStore(arr){
-    localStorage.setItem('kmLiteData', JSON.stringify(arr||[]));
-  }
-
-  function renderTable(data){
-    const tbody = document.querySelector('#tbl tbody');
-    tbody.innerHTML='';
-    data.forEach(d=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML = `
-        <td>${d.id}</td>
-        <td>${d.hdp.H}</td>
-        <td>${d.hdp.D}</td>
-        <td>${d.hdp.P}</td>
-        <td>${d.hdp.nexus}</td>
-        <td>${(d.c15||[]).join(', ')}</td>`;
-      tbody.appendChild(tr);
+// 간단 HDP 스코어링 (0~100)
+var HDP_KEYWORDS={
+  H:['humanitarian','relief','emergency','food assistance','refugee','idp','crisis','aid','flood','drought','cholera','epidemic','earthquake','cyclone','conflict-affected'],
+  D:['development','education','school','livelihood','income','value chain','infrastructure','capacity building','training','enterprise','job','market','productivity','policy','governance'],
+  P:['peace','peacebuilding','social cohesion','reconciliation','mediation','dialogue','conflict prevention','stabilization','trust building','violence reduction','tension','clan','tribal','tribe']
+};
+function hdpScore(text){
+  var t=(text||'').toLowerCase();
+  var counts={H:0,D:0,P:0};
+  Object.keys(HDP_KEYWORDS).forEach(function(k){
+    HDP_KEYWORDS[k].forEach(function(w){
+      if(t.indexOf(w)>=0) counts[k]+=1;
     });
-  }
-
-  let hdpChart, c15Chart;
-  function renderDashboard(data){
-    if(!data.length){ return; }
-    const h = data.filter(d=>d.hdp.H==='H').length;
-    const d = data.filter(d=>d.hdp.D==='D').length;
-    const p = data.filter(d=>d.hdp.P==='P').length;
-    const n = data.filter(d=>d.hdp.nexus==='Y').length;
-
-    const hctx = document.getElementById('hdpChart').getContext('2d');
-    const cctx = document.getElementById('c15Chart').getContext('2d');
-    if(hdpChart) hdpChart.destroy();
-    if(c15Chart) c15Chart.destroy();
-
-    hdpChart = new Chart(hctx, {
-      type:'doughnut',
-      data:{labels:['H','D','P','Nexus(Y)'],datasets:[{data:[h,d,p,n]}]},
-      options:{plugins:{legend:{position:'bottom'}}}
-    });
-
-    const cStats={};
-    data.forEach(x => (x.c15||[]).forEach(c => cStats[c]=(cStats[c]||0)+1));
-    c15Chart = new Chart(cctx, {
-      type:'bar',
-      data:{labels:Object.keys(cStats),datasets:[{data:Object.values(cStats)}]},
-      options:{indexAxis:'y',plugins:{legend:{display:false}}}
-    });
-  }
-
-  function log(msg){
-    const box=document.getElementById('log');
-    box.textContent = (new Date().toLocaleTimeString()) + " — " + msg;
-  }
-
-  // ====== 수동 분류 버튼 ======
-  document.getElementById('btnClassify').addEventListener('click', ()=>{
-    const txt = document.getElementById('note').value.trim();
-    if(!txt){ alert('텍스트를 입력하세요.'); return; }
-    const row = { id: Date.now(), hdp: hdpFlags(txt), c15: classifyC15(txt) };
-    const store = loadStore(); store.push(row); saveStore(store);
-    renderTable(store); renderDashboard(store);
-    log('수동 분류 1건 저장');
   });
+  var maxCnt=Math.max(counts.H,counts.D,counts.P,1);
+  var H=Math.round(counts.H/maxCnt*100);
+  var D=Math.round(counts.D/maxCnt*100);
+  var P=Math.round(counts.P/maxCnt*100);
+  var label='H '+H+'% / D '+D+'% / P '+P+'%';
+  return {H:H,D:D,P:P,label:label};
+}
 
-  // ====== 전체삭제 ======
-  document.getElementById('btnClear').addEventListener('click', ()=>{
-    saveStore([]); renderTable([]); renderDashboard([]);
-    log('저장 데이터 전체 삭제');
+// C1~C15 더미 분류기 (단순 키워드 예시)
+var C15_RULES=[
+  {code:'C1',name:'사업·프로젝트 개요 & 배경',kw:['project','programme','overview','background','context']},
+  {code:'C2',name:'이해관계자 분석',kw:['stakeholder','community','beneficiary','partner','ngo']},
+  {code:'C3',name:'목표·성과지표(Logframe)',kw:['objective','outcome','output','indicator','logframe']},
+  {code:'C4',name:'활동(Activity) 세부 내용',kw:['activity','training','workshop','distribution','construction']},
+  {code:'C5',name:'성과관리(M&E)·데이터',kw:['monitoring','evaluation','baseline','survey','indicator','logframe']},
+  {code:'C6',name:'재정·예산집행',kw:['budget','finance','funding','expenditure','cost']},
+  {code:'C7',name:'위험·리스크·제한사항',kw:['risk','challenge','constraint','limitation','barrier']},
+  {code:'C8',name:'지속가능성·전략적 연계',kw:['sustainability','exit strategy','transition','ownership']},
+  {code:'C9',name:'젠더·사회적 보호',kw:['gender','women','girl','protection','gender-based']},
+  {code:'C10',name:'인도주의-개발-평화 넥서스',kw:['nexus','triple nexus','humanitarian','development','peace']},
+  {code:'C11',name:'기후변화·환경',kw:['climate','environment','resilience','disaster risk reduction']},
+  {code:'C12',name:'보건·WASH·영양',kw:['health','clinic','hospital','wash','water','sanitation','nutrition']},
+  {code:'C13',name:'교육·생계·경제',kw:['education','school','teacher','livelihood','job','income']},
+  {code:'C14',name:'거버넌스·제도·정책',kw:['policy','governance','institution','law','regulation']},
+  {code:'C15',name:'기타(맥락·분쟁·평화 등)',kw:['conflict','peace','migration','refugee','idp']}
+];
+function classifyC15(text,maxCount){
+  var t=(text||'').toLowerCase();
+  var scores=[];
+  C15_RULES.forEach(function(r){
+    var s=0;
+    r.kw.forEach(function(w){ if(t.indexOf(w)>=0) s++; });
+    if(s>0) scores.push({code:r.code,name:r.name,score:s});
   });
+  scores.sort(function(a,b){return b.score-a.score;});
+  if(maxCount) scores=scores.slice(0,maxCount);
+  return scores;
+}
 
-  // ====== ReliefWeb 가져오기 ======
-  document.getElementById('btnFetch').addEventListener('click', async ()=>{
-    const days = +document.getElementById('days').value || 365;
-    const limit = +document.getElementById('limit').value || 300;
-    const countries = (document.getElementById('country').value||'')
-                      .split(';').map(s=>s.trim()).filter(Boolean);
+function renderC15Badges(list){
+  if(!list||!list.length) return '';
+  return list.map(function(x){
+    return '<span class="badge">'+x.code+'</span>';
+  }).join(' ');
+}
 
-    // 간단한 예: disasters 엔드포인트 사용 (필요 시 다른 컬렉션으로 교체)
-    const base = `https://api.reliefweb.int/v1/disasters?appname=${encodeURIComponent(APPNAME)}&limit=${limit}`;
-    const since = new Date(Date.now()-days*86400000).toISOString().slice(0,10);
-    const filterDate = `&filter[conditions][0][field]=date.changed&filter[conditions][0][value]=${since}&filter[conditions][0][operator]=gte`;
-    const filterCountry = countries.length
-      ? `&filter[conditions][1][field]=country.name&filter[conditions][1][value]=${encodeURIComponent(countries.join('|'))}&filter[conditions][1][operator]=like`
-      : '';
+function hbarHTML(hdp){
+  if(!hdp) return '';
+  var H=hdp.H||0,D=hdp.D||0,P=hdp.P||0;
+  var total=Math.max(H+D+P,1);
+  var hPct=Math.round(H/total*100);
+  var dPct=Math.round(D/total*100);
+  var pPct=100-hPct-dPct;
+  return '<div style="display:flex;height:10px;border-radius:999px;overflow:hidden;border:1px solid #243149">'+
+           '<div style="flex:'+H+';background:rgba(255,99,132,0.7)" title="H '+H+'%"></div>'+
+           '<div style="flex:'+D+';background:rgba(54,162,235,0.7)" title="D '+D+'%"></div>'+
+           '<div style="flex:'+P+';background:rgba(255,206,86,0.7)" title="P '+P+'%"></div>'+
+         '</div>';
+}
 
-    const url = base + filterDate + filterCountry;
-    const finalUrl = USE_PROXY ? (PROXY + encodeURIComponent(url)) : url;
-
-    try{
-      const res = await fetch(finalUrl);
-      const j = await res.json();
-      const data = (j.data||[]).map((it)=> {
-        const text = [
-          it.fields?.name, it.fields?.description, it.fields?.type?.name,
-          (it.fields?.country||[]).map(c=>c.name).join(', ')
-        ].filter(Boolean).join(' | ');
-        return { id: it.id || (it.fields?.name||Date.now()), hdp: hdpFlags(text), c15: classifyC15(text) };
-      });
-
-      const store = loadStore().concat(data);
-      saveStore(store);
-      renderTable(store); renderDashboard(store);
-      log(`ReliefWeb 데이터 ${data.length}건 로드 및 저장`);
-    }catch(err){
-      console.error(err);
-      log('ReliefWeb 로드 오류(콘솔 참조). 프록시 설정/네트워크를 점검하세요.');
+// ---------- TF-IDF 요약 ----------
+function tfidfSummary(text,maxSentences){
+  maxSentences=maxSentences||3;
+  var sents=text.split(/(?<=[\.!?])\s+/);
+  if(sents.length<=maxSentences) return text;
+  function tokenize(s){return s.toLowerCase().replace(/[^a-z0-9가-힣\s]/g,' ').split(/\s+/).filter(Boolean);}
+  var stop=new Set(['the','and','for','with','that','this','from','into','about','there','their','have','has','been','will','would','should','could','shall','또는','그리고','하지만','때문에','위해','대한','에서','으로','에게','까지','부터','에서는','에는','에','를','을','이','가','은','는','와','과','하다','했다','대한','위한']);
+  var tf={},df={},sentTokens=[];
+  for(var i=0;i<sents.length;i++){
+    var ws=tokenize(sents[i]).filter(function(w){return !stop.has(w);});
+    sentTokens.push(ws);
+    var seen={};
+    for(var j=0;j<ws.length;j++){
+      var w=ws[j]; tf[w]=(tf[w]||0)+1; if(!seen[w]){df[w]=(df[w]||0)+1; seen[w]=1;}
     }
+  }
+  var N=sents.length;
+  var scored=[];
+  for(var k=0;k<sents.length;k++){
+    var sc=0, ws2=sentTokens[k];
+    for(var j2=0;j2<ws2.length;j2++){
+      var ww=ws2[j2];
+      var idf=Math.log((N+1)/((df[ww]||1)+1));
+      sc+=(tf[ww]||0)*idf;
+    }
+    var len=sents[k].length; var lenAdj=(len<40?0.85:(len>300?0.9:1));
+    scored.push({i:k,score:sc*lenAdj});
+  }
+  scored.sort(function(a,b){return b.score-a.score;});
+  scored=scored.slice(0,maxSentences).sort(function(a,b){return a.i-b.i;});
+  return scored.map(function(x){return sents[x.i];}).join(' ');
+}
+
+// HDP 점수 + C1~C15 요약 카드
+function buildNoteFromItem(it){
+  var text=[it.body||'',it.title||'',it.country||'',it.source||'',it.theme||'',it.type||''].join(' ');
+  var hdp=hdpScore(text);
+  var c15=classifyC15(text,3);
+  var summary=tfidfSummary(it.body||'',3);
+  return {
+    id:it.id,
+    title:it.title||'(제목 없음)',
+    url:it.url||'',
+    created:it.created||new Date().toISOString(),
+    country:it.country||'',
+    source:it.source||'',
+    theme:it.theme||'',
+    type:it.type||'',
+    summary:summary,
+    hdp:hdp,
+    hdpLabel:hdp.label,
+    c15:c15
+  };
+}
+
+// DB 마이그레이션 (예전 구조 -> 현재 구조)
+function migrateNotesIfNeeded(){
+  try{
+    var db=getDB();
+    if(!db.notes||!db.notes.length) return;
+    var changed=false;
+    db.notes=db.notes.map(function(n){
+      if(!n.hdp||!isFinite(n.hdp&&n.hdp.H)){
+        var t=[n.title,n.summary,n.body].filter(Boolean).join(' ');
+        var sc=hdpScore(t); n.hdp=sc; n.hdpLabel=sc.label; changed=true;
+      }
+      if(!n.hdpLabel){ n.hdpLabel='H '+n.hdp.H+'% / D '+n.hdp.D+'% / P '+n.hdp.P+'%'; changed=true; }
+      if(!n.c15||!n.c15.length){
+        var t2=[n.title,n.summary,n.body].filter(Boolean).join(' ');
+        n.c15=classifyC15(t2,3); changed=true;
+      }
+      return n;
+    });
+    if(changed) setDB(db);
+  }catch(e){ console.warn('migrateNotesIfNeeded failed:',e); }
+}
+
+function renderNotes(filter){
+  filter=(filter||'').toLowerCase();
+  var box=document.getElementById('notes-list');
+  var db=getDB();
+  if(!db.notes.length){ box.innerHTML='<div class="small">저장된 노트가 없습니다.</div>'; return; }
+  var html='';
+  db.notes.forEach(function(n){
+    var hay=[n.title,n.summary,n.country,n.hdpLabel].concat((n.c15||[]).map(function(x){return x.code+' '+x.name;})).join(' ').toLowerCase();
+    if(filter && hay.indexOf(filter)<0) return;
+    html+= '<div class="card">'
+         +   '<div class="flex" style="justify-content:space-between">'
+         +     '<div><strong>'+n.title+'</strong></div>'
+         +     '<div class="small mono">'+new Date(n.created).toISOString().slice(0,10)+'</div>'
+         +   '</div>'
+         +   '<div class="small" style="margin:6px 0"><em>'+n.country+' · '+n.source+' · '+n.type+'</em> · <span class="badge">'+(n.hdpLabel||'')+'</span></div>'
+         +   '<div style="margin:6px 0">'+hbarHTML(n.hdp)+'</div>'
+         +   '<div class="small" style="margin:4px 0">'+renderC15Badges(n.c15)+'</div>'
+         +   '<div class="small" style="margin-top:4px;max-height:5.5em;overflow:hidden;text-overflow:ellipsis;">'+(n.summary||'')+'</div>'
+         +   '<div class="small" style="margin-top:6px">'
+         +     (n.url?('<a href="'+n.url+'" target="_blank" rel="noopener">원문 링크</a> · '):'')
+         +     '<a href="#" data-id="'+n.id+'" class="summary-link">요약 전체 보기</a>'
+         +   '</div>'
+         + '</div>';
+  });
+  box.innerHTML=html||'<div class="small">검색 결과가 없습니다.</div>';
+
+  // 모달 링크 바인딩
+  Array.prototype.forEach.call(box.querySelectorAll('.summary-link'), function(a){
+    a.onclick=function(e){
+      e.preventDefault();
+      var id=this.getAttribute('data-id');
+      var db=getDB();
+      var note=db.notes.find(function(n){return String(n.id)===String(id);});
+      if(!note) return;
+      var modal=document.getElementById('summary-modal');
+      document.getElementById('summary-title').textContent=note.title;
+      document.getElementById('summary-meta').textContent=[note.country,note.source,note.type].filter(Boolean).join(' · ');
+      document.getElementById('summary-body').textContent=note.summary||'';
+      modal.style.display='flex';
+    };
+  });
+}
+
+// 모달 닫기
+document.getElementById('summary-close').onclick=function(){
+  document.getElementById('summary-modal').style.display='none';
+};
+document.getElementById('summary-modal').onclick=function(e){
+  if(e.target.id==='summary-modal') this.style.display='none';
+};
+
+// ---------- ReliefWeb API 호출 ----------
+async function tryFetchBodies(baseUrl,bodies){
+  var log=[];
+  for(var i=0;i<bodies.length;i++){
+    try{
+      var res=await fetch(baseUrl,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(bodies[i])
+      });
+      if(!res.ok){
+        var txt=await res.text();
+        log.push('HTTP '+res.status+' — '+txt);
+        continue;
+      }
+      var json=await res.json();
+      return {ok:true,json:json,log:log};
+    }catch(e){
+      log.push('fetch error: '+e.message);
+    }
+  }
+  return {ok:false,log:log};
+}
+
+async function rwFetch(){
+  var daySpan=parseInt(document.getElementById('rw-days').value||'365',10);
+  var limit=parseInt(document.getElementById('rw-limit').value||'300',10);
+  var countryRaw=document.getElementById('rw-country').value||'';
+  var countries=countryRaw.split(';').map(function(s){return s.trim();}).filter(Boolean);
+
+  var out=document.getElementById('rw-out');
+  var st=document.getElementById('rw-status');
+  if(st) st.textContent='요청 중...';
+
+  var url='https://api.reliefweb.int/v1/reports?appname=km-lite';
+  // 날짜: ISO 8601 전체 문자열 사용 (예: 2025-11-12T00:00:00.000Z)
+  var sinceISO=new Date(Date.now()-daySpan*86400000).toISOString();
+
+  var fields={include:['id','title','url','body','body-html','country','source','theme','disaster_type','date.created']};
+  var sort=["date.created:desc"];
+  var conditionsBase=[
+    {field:'date.created',value:{from:sinceISO}},
+  ];
+  if(countries.length){
+    conditionsBase.push({field:'country',value:countries});
+  }
+
+  // 다양한 시도(스키마 버전 차이 대응)
+  var bodies=[
+    {limit:limit,offset:0,filter:{operator:'AND',conditions:conditionsBase},fields:fields,sort:sort},
+    {limit:limit,offset:0,filter:{operator:'AND',conditions:[
+      {field:'date.created',range:{from:sinceISO}}
+    ]},fields:fields,sort:sort},
+    {limit:limit,offset:0,filter:{operator:'AND',conditions:[
+      {field:'date.created',operator:">=",value:sinceISO}
+    ]},fields:fields,sort:sort}
+  ];
+
+  var result=await tryFetchBodies(url,bodies);
+  if(!result.ok){
+    if(st) st.textContent='불러오기 실패';
+    out.innerHTML='<div class="small err">'+result.log.map(function(e){return '• '+e;}).join('<br/>')+'</div>';
+    console.error('ReliefWeb 요청 실패 로그:', result.log);
+    return;
+  }
+  if(st) st.textContent='완료 ('+new Date().toLocaleTimeString()+')';
+
+  var data=result.json.data||[];
+  if(!data.length){
+    out.innerHTML='<div class="small">조건에 맞는 문서가 없습니다.</div>';
+    return;
+  }
+
+  var items=data.map(function(r){
+    var f=r.fields||{};
+    var body=(f['body-html']||f.body||'');
+    var metaTxt=[f.title||'',(f.country||[]).map(function(c){return c.name;}).join(', '),f.source||''].join(' ');
+    var hdp=hdpScore(metaTxt+' '+body);
+    var c15=classifyC15(metaTxt+' '+body,3);
+    return {
+      id:r.id,title:f.title||'',url:f.url||'',created:f['date.created']||'',
+      country:(f.country||[]).map(function(c){return c.name;}).join(', '),
+      source:(f.source||[]).map(function(s){return s.name||s;}).join(', '),
+      theme:(f.theme||[]).map(function(t){return t.name;}).join(', '),
+      type:(f.disaster_type||[]).map(function(d){return d.name;}).join(', '),
+      body:body, hdp:hdp, c15:c15
+    };
   });
 
-  // ====== 초기 렌더 ======
-  const init = loadStore();
-  renderTable(init); renderDashboard(init);
-  log('초기화 완료');
+  var rows='';
+  for(var i=0;i<items.length;i++){
+    var it=items[i];
+    rows+= '<tr>'
+         +   '<td><input type="checkbox" class="rw-check" data-i="'+i+'"></td>'
+         +   '<td class="title-cell" style="cursor:pointer;text-decoration:underline">'+it.title+'</td>'
+         +   '<td>'+it.country+'</td>'
+         +   '<td>'+it.source+'</td>'
+         +   '<td>'+hbarHTML(it.hdp)+'</td>'
+         +   '<td>'+renderC15Badges(it.c15)+'</td>'
+         +   '<td><a href="'+it.url+'" target="_blank" rel="noopener">링크</a></td>'
+         + '</tr>';
+  }
+  out.innerHTML=
+    '<table>'+
+      '<thead><tr><th></th><th>제목</th><th>국가</th><th>출처</th><th>HDP%</th><th>분류(C1~C15)</th><th>URL</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table>';
 
-})();
+  // 제목 클릭 시 전체 본문 보기 (간단 알림)
+  Array.prototype.forEach.call(out.querySelectorAll('.title-cell'), function(td){
+    td.onclick=function(){
+      var idx=parseInt(this.parentNode.querySelector('.rw-check').getAttribute('data-i'),10);
+      var it=items[idx];
+      alert((it.title||'')+'\n\n'+(it.body||''));
+    };
+  });
+}
+
+// 선택 항목 노트로 저장
+document.getElementById('rw-save-selected').onclick=function(){
+  var out=document.getElementById('rw-out');
+  var checks=out.querySelectorAll('.rw-check');
+  if(!checks.length){ alert('먼저 불러오기 후 체크하세요.'); return; }
+  var db=getDB();
+  var added=0;
+  Array.prototype.forEach.call(checks,function(ch){
+    if(!ch.checked) return;
+    var idx=parseInt(ch.getAttribute('data-i'),10);
+    var row=out.querySelectorAll('tbody tr')[idx];
+    if(!row) return;
+    var title=row.children[1].textContent;
+    var country=row.children[2].textContent;
+    var source=row.children[3].textContent;
+    var hdpBar=row.children[4].textContent;
+    // raw item 정보는 rwFetch 안에서만 있었으므로, 다시 fetch하지 않고 최소 정보만 저장
+    var note={
+      id:Date.now()+'-'+idx,
+      title:title,
+      url:row.children[6].querySelector('a').getAttribute('href'),
+      created:new Date().toISOString(),
+      country:country,
+      source:source,
+      type:'',
+      summary:'',
+      body:'',
+      hdp:{H:0,D:0,P:0,label:hdpBar},
+      hdpLabel:hdpBar,
+      c15:[]
+    };
+    db.notes.push(note);
+    added++;
+  });
+  setDB(db);
+  renderNotes(document.getElementById('notes-q').value);
+  alert(added+'개 노트를 저장했습니다.');
+};
+
+// 대시보드 렌더링
+var hdpChart,c15Chart;
+function renderDashboard(){
+  var db=getDB();
+  var notes=db.notes||[];
+  var hCnt=0,dCnt=0,pCnt=0;
+  var cAgg={};
+  notes.forEach(function(n){
+    if(n.hdp&&n.hdp.H>0) hCnt++;
+    if(n.hdp&&n.hdp.D>0) dCnt++;
+    if(n.hdp&&n.hdp.P>0) pCnt++;
+    (n.c15||[]).forEach(function(c){ cAgg[c.code]=(cAgg[c.code]||0)+1; });
+  });
+
+  var ctx1=document.getElementById('hdp-chart').getContext('2d');
+  var ctx2=document.getElementById('c15-chart').getContext('2d');
+  if(hdpChart) hdpChart.destroy();
+  if(c15Chart) c15Chart.destroy();
+
+  hdpChart=new Chart(ctx1,{
+    type:'doughnut',
+    data:{labels:['H','D','P'],datasets:[{data:[hCnt,dCnt,pCnt]}]},
+    options:{plugins:{legend:{position:'bottom'}}}
+  });
+
+  var labels=Object.keys(cAgg);
+  var vals=labels.map(function(k){return cAgg[k];});
+  c15Chart=new Chart(ctx2,{
+    type:'bar',
+    data:{labels:labels,datasets:[{data:vals}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}}}
+  });
+}
+
+// 초기 렌더/바인딩
+migrateNotesIfNeeded();
+renderNotes();
+renderDashboard();
+
+document.addEventListener('DOMContentLoaded', function(){
+  var btn=document.getElementById('rw-fetch'); if(btn) btn.addEventListener('click', async function(){
+    await rwFetch();
+    renderDashboard();
+  });
+  document.getElementById('notes-refresh').onclick=function(){
+    renderNotes(document.getElementById('notes-q').value);
+    renderDashboard();
+  };
+  document.getElementById('notes-clear').onclick=function(){
+    if(!confirm('모든 저장된 노트를 삭제합니다. 계속할까요?')) return;
+    setDB({notes:[]}); renderNotes(''); renderDashboard();
+  };
+  document.getElementById('notes-q').addEventListener('input', function(e){
+    renderNotes(e.target.value); renderDashboard();
+  });
+});
 </script>
 </body>
 </html>
