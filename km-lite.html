@@ -335,7 +335,9 @@ async function rwFetch(){
   var sort=["date.created:desc"];
 
   var conditions=[
-    {field:'date.created',value:{from:sinceISO}}
+    {field:'date.created',
+     operator: "gte",
+     value: sinceISO
   ];
   if(countries.length){
     conditions.push({field:'country',value:countries});
