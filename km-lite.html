@@ -16,7 +16,7 @@ button{cursor:pointer}
 .err{color:#ffb4b4}
 hr{border:none;border-top:1px solid var(--line);margin:12px 0}
 .flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.card{border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px;background:#101826}
+.card{border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px}
 #rw-results{margin-top:12px;max-height:60vh;overflow:auto;border:1px solid var(--line);padding:.6rem;border-radius:8px}
 table{border-collapse:collapse;width:100%;font-size:13px}
 td,th{border:1px solid var(--line);padding:6px;text-align:left;vertical-align:top}
@@ -42,9 +42,7 @@ td,th{border:1px solid var(--line);padding:6px;text-align:left;vertical-align:to
 
 <label class="small">대상국(참고용)</label><br/>
 <textarea rows="3" style="width:100%" readonly>
-Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Principe,
-Somalia, South Sudan, Zimbabwe, Armenia, Iran, Jordan, Lebanon, Palestine, Syria, Yemen,
-Papua New Guinea, Solomon Islands, Timor-Leste
+Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Principe, Somalia, South Sudan, Zimbabwe, Armenia, Iran, Jordan, Lebanon, Palestine, Syria, Yemen, Papua New Guinea, Solomon Islands, Timor-Leste
 </textarea>
 <br/><br/>
 
@@ -62,7 +60,7 @@ Papua New Guinea, Solomon Islands, Timor-Leste
   <div><button id="rw-to-notes">선택 항목 노트로 저장(요약 포함)</button></div>
 </div>
 
-<div id="rw-results" class="small">아직 불러온 항목이 없습니다.</div>
+<div id="rw-results"></div>
 
 <hr/>
 <div id="notes-panel">
@@ -103,8 +101,9 @@ Papua New Guinea, Solomon Islands, Timor-Leste
 </div>
 
 <script>
-// ===== 전역 설정 / 상수 =====
-const APPNAME = "HyunKim+recap_km_lite+a5Ttg7U8";
+// ---------------- 상수 ----------------
+const APPNAME   = "HyunKim+recap_km_lite+a5Ttg7U8";
+const DB_KEY    = "km-lite-db";
 
 const RECAP_NAMES = [
   'Burundi','Central African Republic','Comoros','Guinea','Kenya','Mali',
@@ -113,35 +112,54 @@ const RECAP_NAMES = [
   'Papua New Guinea','Solomon Islands','Timor-Leste'
 ];
 const RECAP_ISO3 = [
-  'BDI','CAF','COM','GIN','KEN','MLI','STP','SOM','SSD','ZWE',
-  'ARM','IRN','JOR','LBN','PSE','SYR','YEM','PNG','SLB','TLS'
+  'BDI','CAF','COM','GIN','KEN','MLI',
+  'STP','SOM','SSD','ZWE',
+  'ARM','IRN','JOR','LBN','PSE','SYR','YEM',
+  'PNG','SLB','TLS'
 ];
-const RECAP_MAP = RECAP_NAMES.map((name,i)=>({name,iso3:RECAP_ISO3[i]}));
-const DB_KEY = 'km-lite-db';
+const RECAP_MAP = RECAP_NAMES.map((n,i)=>({name:n,iso3:RECAP_ISO3[i]}));
 
-// 선택된 ISO3 (없으면 20개 전체 사용)
 let pickedISO3 = [];
-// 최근 fetch 결과
 let currentItems = [];
 
-// ===== 공통 유틸 =====
-function getDB(){
-  try{
-    return JSON.parse(localStorage.getItem(DB_KEY) || '{"notes":[]}');
-  }catch(e){
-    console.warn('getDB 실패',e);
-    return {notes:[]};
-  }
+// ---------------- 국가 모달 ----------------
+function openCountryModal(){
+  const grid = document.getElementById('country-grid');
+  let html = '';
+  RECAP_MAP.forEach(d=>{
+    const checked = pickedISO3.indexOf(d.iso3) >= 0 ? 'checked' : '';
+    html += `
+      <label style="display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 8px">
+        <input type="checkbox" value="${d.iso3}" ${checked}>
+        <span>${d.name} <span class="badge">${d.iso3}</span></span>
+      </label>`;
+  });
+  grid.innerHTML = html;
+  document.getElementById('country-modal').style.display = 'flex';
 }
-function setDB(db){
-  localStorage.setItem(DB_KEY, JSON.stringify(db || {notes:[]}));
+function closeCountryModal(){
+  document.getElementById('country-modal').style.display = 'none';
 }
+document.getElementById('open-country').onclick = openCountryModal;
+document.getElementById('country-close').onclick = closeCountryModal;
+document.getElementById('country-clear').onclick = function(){
+  pickedISO3 = [];
+  document.getElementById('country-chip').textContent = '전체 20개국';
+  closeCountryModal();
+};
+document.getElementById('country-apply').onclick = function(){
+  const boxes = document.querySelectorAll('#country-grid input:checked');
+  pickedISO3 = Array.prototype.map.call(boxes,b=>b.value);
+  document.getElementById('country-chip').textContent =
+    pickedISO3.length ? (pickedISO3.length+'개국 선택') : '전체 20개국';
+  closeCountryModal();
+};
 
-// ===== 요약 (TF-IDF 매우 단순 버전) =====
-function summarizeText(text, maxSentences){
+// ---------------- TF-IDF 요약 ----------------
+function summarizeText(text,maxSentences){
   maxSentences = maxSentences || 5;
   if(!text) return '';
-  const sents = text
+  let sents = text
     .split(/(?<=[.!?。！？])\s+|[\r\n]{2,}/)
     .map(s=>s.trim())
     .filter(s=>s.length>20);
@@ -150,70 +168,57 @@ function summarizeText(text, maxSentences){
 
   function tokenize(s){
     return s.toLowerCase()
-            .replace(/[^a-z0-9가-힣\s]/g,' ')
-            .split(/\s+/).filter(Boolean);
+      .replace(/[^a-z0-9가-힣\s]/g,' ')
+      .split(/\s+/).filter(Boolean);
   }
+
   const stop = new Set([
-    'the','and','for','with','that','this','from','are','was','were',
-    'have','has','had','of','in','to','on','by','as','is','be','or',
-    'at','an','a','it','its','their','our','we','you','they','into',
-    'over','under','between','within','through','about','after',
-    'before','during','against','among','per',
-    '및','그리고','그러나','또는','에서','으로','에는','에','를','을',
-    '이','가','은','는','와','과','하다','했다','대한','위한'
+    'the','and','for','with','that','this','from','are','was','were','have',
+    'has','had','of','in','to','on','by','as','is','be','or','at','an','a','it',
+    'its','their','our','we','you','they','into','over','under','between','within',
+    'through','about','after','before','during','against','among','per',
+    '및','그리고','그러나','또는','에서','으로','에는','에','를','을','이','가','은','는','와','과','하다','했다','대한','위한'
   ]);
 
   const tf = {}, df = {}, sentTokens = [];
-  for(let i=0;i<sents.length;i++){
-    const ws = tokenize(sents[i]).filter(w=>!stop.has(w));
-    sentTokens.push(ws);
+  sents.forEach((s,i)=>{
+    const ws = tokenize(s).filter(w=>!stop.has(w));
+    sentTokens[i] = ws;
     const seen = {};
-    for(const w of ws){
+    ws.forEach(w=>{
       tf[w] = (tf[w]||0)+1;
       if(!seen[w]){ df[w] = (df[w]||0)+1; seen[w]=1; }
-    }
-  }
+    });
+  });
 
   const N = sents.length;
-  const scored = [];
-  for(let i=0;i<sents.length;i++){
+  const scored = sents.map((s,i)=>{
     let sc = 0;
-    for(const w of sentTokens[i]){
+    sentTokens[i].forEach(w=>{
       const idf = Math.log((N+1)/((df[w]||1)+1));
       sc += (tf[w]||0)*idf;
-    }
-    const len = sents[i].length;
+    });
+    const len = s.length;
     const lenAdj = (len<40?0.85:(len>300?0.9:1));
-    scored.push({i,score:sc*lenAdj});
-  }
+    return {i,score:sc*lenAdj};
+  });
+
   scored.sort((a,b)=>b.score-a.score);
-  const top = scored.slice(0,maxSentences).sort((a,b)=>a.i-b.i);
-  return top.map(x=>sents[x.i]).join(' ');
+  scored.splice(maxSentences);
+  scored.sort((a,b)=>a.i-b.i);
+  return scored.map(x=>sents[x.i]).join(' ');
 }
 
-// ===== HDP 점수 =====
+// ---------------- HDP 점수 ----------------
 const HDP_DICT = {
-  H:['emergency','relief','response','humanitarian','displacement','refugee',
-     'cholera','outbreak','famine','flood','earthquake','evacuation',
-     'cash assistance','wash cluster','rapid'],
-  D:['development','infrastructure','education','school','clinic','health system',
-     'primary care','livelihoods','capacity building','policy','programme',
-     'investment','training','supply chain','renewable','solar','water supply',
-     'monitoring','m&e'],
-  P:['peace','cohesion','conflict','mediation','grievance','inclusive',
-     'social contract','community committee','youth','women participation',
-     'accountability','complaints','do no harm']
+  H:['emergency','relief','response','humanitarian','displacement','refugee','cholera','outbreak','famine','flood','earthquake','evacuation','cash assistance','wash cluster','rapid'],
+  D:['development','infrastructure','education','school','clinic','health system','primary care','livelihoods','capacity building','policy','programme','investment','training','supply chain','renewable','solar','water supply','monitoring','m&e'],
+  P:['peace','cohesion','conflict','mediation','grievance','inclusive','social contract','community committee','youth','women participation','accountability','complaints','do no harm']
 };
 function hdpScore(text){
   const T = (text||'').toLowerCase();
-  function hit(arr){
-    let s=0;
-    for(const w of arr){ if(T.indexOf(w)>=0) s++; }
-    return s;
-  }
-  let H = hit(HDP_DICT.H),
-      D = hit(HDP_DICT.D),
-      P = hit(HDP_DICT.P);
+  function hit(arr){let s=0; arr.forEach(w=>{ if(T.indexOf(w)>=0) s++; }); return s;}
+  let H = hit(HDP_DICT.H), D = hit(HDP_DICT.D), P = hit(HDP_DICT.P);
   if(H+D+P===0) return {H:0,D:100,P:0,label:'D 100%'};
   const sum = H+D+P;
   H = Math.round(H/sum*100);
@@ -222,21 +227,22 @@ function hdpScore(text){
   return {H,D,P,label:`H ${H}% / D ${D}% / P ${P}%`};
 }
 function hbarHTML(score){
-  const s = (score && typeof score==='object') ? score : {H:0,D:100,P:0,label:'D 100%'};
+  const s = (score && typeof score==='object')
+    ? score : {H:0,D:100,P:0,label:'D 100%'};
   const H = Math.max(0,Math.min(100,s.H||0));
   const D = Math.max(0,Math.min(100,s.D||0));
   const P = Math.max(0,Math.min(100,s.P||0));
   const label = s.label || `H ${H}% / D ${D}% / P ${P}%`;
-  return ''+
-    '<div class="hbar">'+
-      '<span class="hcol-H" style="width:'+H+'%;"></span>'+
-      '<span class="hcol-D" style="width:'+D+'%;"></span>'+
-      '<span class="hcol-P" style="width:'+P+'%;"></span>'+
-    '</div>'+
-    '<div class="small">'+label+'</div>';
+  return `
+    <div class="hbar">
+      <span class="hcol-H" style="width:${H}%;"></span>
+      <span class="hcol-D" style="width:${D}%;"></span>
+      <span class="hcol-P" style="width:${P}%;"></span>
+    </div>
+    <div class="small">${label}</div>`;
 }
 
-// ===== C1~C15 분류 =====
+// ---------------- C1~C15 분류 ----------------
 const CODES = {
   C1:{name:'사업·프로젝트 개요 & 배경',kw:['background','context','objective','overview','rationale','fragile','fcv','situation analysis','needs assessment','배경','목표','맥락','현황']},
   C2:{name:'이해관계자 분석',kw:['stakeholder','beneficiary','local government','ngo','civil society','private sector','partner','coordination','거버넌스','수혜자','참여기관']},
@@ -261,83 +267,92 @@ function classifyC15(text,topN){
   for(const k in CODES){
     const cfg = CODES[k];
     let s = 0;
-    for(const w of cfg.kw){
+    cfg.kw.forEach(w=>{
       if(T.indexOf(w.toLowerCase())>=0) s++;
-    }
+    });
     if(s>0) ranked.push({code:k,name:cfg.name,s});
   }
   ranked.sort((a,b)=>b.s-a.s);
   return ranked.slice(0,topN);
 }
 function renderC15Badges(arr){
-  if(!arr || !arr.length) return '<span class="small" style="color:#8698b0">—</span>';
-  return arr.map(x=>'<span class="badge" title="'+x.name+'">'+x.code+'</span>').join(' ');
+  if(!arr || !arr.length)
+    return '<span class="small" style="color:#8698b0">—</span>';
+  return arr.map(x=>
+    `<span class="badge" title="${x.name}">${x.code}</span>`
+  ).join(' ');
 }
 
-// ===== 노트 관련 =====
+// ---------------- DB / 노트 ----------------
+function getDB(){
+  try{
+    return JSON.parse(localStorage.getItem(DB_KEY)||'{"notes":[]}');
+  }catch(e){
+    return {notes:[]};
+  }
+}
+function setDB(db){
+  localStorage.setItem(DB_KEY,JSON.stringify(db));
+}
 function migrateNotesIfNeeded(){
   try{
     const db = getDB();
     let changed = false;
     db.notes = (db.notes||[]).map(n=>{
       if(!n.hdp || !isFinite(n.hdp && n.hdp.H)){
-        const t=[n.title,n.summary,n.body].filter(Boolean).join(' ');
-        const sc = hdpScore(t); n.hdp=sc; n.hdpLabel=sc.label; changed=true;
+        const t = [n.title,n.summary,n.body].filter(Boolean).join(' ');
+        const sc = hdpScore(t); n.hdp = sc; n.hdpLabel = sc.label; changed = true;
       }
       if(!n.hdpLabel){
-        n.hdpLabel = `H ${n.hdp.H}% / D ${n.hdp.D}% / P ${n.hdp.P}%`;
-        changed = true;
+        n.hdpLabel = `H ${n.hdp.H}% / D ${n.hdp.D}% / P ${n.hdp.P}%`; changed = true;
       }
       if(!n.c15 || !n.c15.length){
-        const t2=[n.title,n.summary,n.body].filter(Boolean).join(' ');
-        n.c15 = classifyC15(t2,3); changed=true;
+        const t2 = [n.title,n.summary,n.body].filter(Boolean).join(' ');
+        n.c15 = classifyC15(t2,3); changed = true;
       }
       return n;
     });
     if(changed) setDB(db);
-  }catch(e){
-    console.warn('migrateNotesIfNeeded failed',e);
-  }
+  }catch(e){ console.warn('migrateNotesIfNeeded failed',e); }
 }
-
 function renderNotes(filter){
   filter = (filter||'').toLowerCase();
   const box = document.getElementById('notes-list');
-  const db = getDB();
+  const db  = getDB();
   if(!db.notes.length){
     box.innerHTML = '<div class="small">저장된 노트가 없습니다.</div>';
     return;
   }
-  let html='';
+  let html = '';
   db.notes.forEach(n=>{
     const hay = [n.title,n.summary,n.country,n.hdpLabel]
-      .concat((n.c15||[]).map(x=>x.code+' '+x.name)).join(' ').toLowerCase();
+      .concat((n.c15||[]).map(x=>x.code+' '+x.name))
+      .join(' ').toLowerCase();
     if(filter && hay.indexOf(filter)<0) return;
-    html += ''
-      + '<div class="card">'
-      +   '<div class="flex" style="justify-content:space-between">'
-      +     '<div><strong>'+n.title+'</strong></div>'
-      +     '<div class="small mono">'+new Date(n.created).toISOString().slice(0,10)+'</div>'
-      +   '</div>'
-      +   '<div class="small" style="margin:6px 0"><em>'+ (n.country||'') +'</em> · <span class="badge">'+(n.hdpLabel||'')+'</span></div>'
-      +   '<div style="margin:6px 0">'+hbarHTML(n.hdp)+'</div>'
-      +   '<div class="small" style="margin:4px 0">'+renderC15Badges(n.c15)+'</div>'
-      +   '<div>'+(n.summary||'<span class="small">요약 없음</span>')+'</div>'
-      +   '<div class="flex" style="margin-top:6px">'
-      +     (n.url?'<a href="'+n.url+'" target="_blank" rel="noopener">원문 링크</a>':'')
-      +     '<button data-id="'+n.id+'" class="btn-del small">삭제</button>'
-      +   '</div>'
-      + '</div>';
+    html += `
+      <div class="card">
+        <div class="flex" style="justify-content:space-between">
+          <div><strong>${n.title}</strong></div>
+          <div class="small mono">${new Date(n.created).toISOString().slice(0,10)}</div>
+        </div>
+        <div class="small" style="margin:6px 0"><em>${n.country||''}</em> · <span class="badge">${n.hdpLabel||''}</span></div>
+        <div style="margin:6px 0">${hbarHTML(n.hdp)}</div>
+        <div class="small" style="margin:4px 0">${renderC15Badges(n.c15)}</div>
+        <div>${n.summary || '<span class="small">요약 없음</span>'}</div>
+        <div class="flex" style="margin-top:6px;gap:8px">
+          ${n.url?`<a href="${n.url}" target="_blank" rel="noopener">원문 링크</a>`:''}
+          <button data-id="${n.id}" class="btn-del small">삭제</button>
+        </div>
+      </div>`;
   });
-  box.innerHTML = html || '<div class="small">검색 결과가 없습니다.</div>';
-
+  box.innerHTML = html;
   Array.prototype.forEach.call(
     box.querySelectorAll('.btn-del'),
     b=>{
       b.onclick = function(){
         const id = b.getAttribute('data-id');
         const db2 = getDB();
-        db2.notes = db2.notes.filter(x=>x.id!==id);
+        db2.notes = (db2.notes||[]).filter(x=>x.id!==id);
         setDB(db2);
         renderNotes(filter);
       };
@@ -345,53 +360,37 @@ function renderNotes(filter){
   );
 }
 
-// ===== 국가 팝업 =====
-function openCountryModal(){
-  const grid = document.getElementById('country-grid');
-  let html='';
-  RECAP_MAP.forEach(d=>{
-    const checked = pickedISO3.indexOf(d.iso3)>=0 ? 'checked' : '';
-    html += `
-      <label style="display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 8px">
-        <input type="checkbox" value="${d.iso3}" ${checked}>
-        <span>${d.name} <span class="badge">${d.iso3}</span></span>
-      </label>`;
-  });
-  grid.innerHTML = html;
-  document.getElementById('country-modal').style.display='flex';
-}
-function closeCountryModal(){ document.getElementById('country-modal').style.display='none'; }
-
-// ===== ReliefWeb fetch (단일 바디, ISO8601 full) =====
+// ---------------- ReliefWeb fetch (날짜는 로컬에서 필터) ----------------
 async function rwFetch(){
   const out = document.getElementById('rw-results');
   const st  = document.getElementById('rw-status');
   out.innerHTML = '';
-  st.textContent = '요청 중...';
+  st.textContent = '요청 중…';
 
   const daySpan = Number(document.getElementById('rw-days').value || 365);
-  const limit   = Math.min(Number(document.getElementById('rw-limit').value || 300), 1000);
-
+  const limit   = Math.min(Number(document.getElementById('rw-limit').value || 300),1000);
   const sinceDate = new Date(Date.now() - daySpan*86400000);
-  const sinceISO  = sinceDate.toISOString(); // 완전한 ISO 8601
+  const sinceMillis = sinceDate.getTime();
 
-  // 국가 리스트 (iso3)
-  const iso3 = pickedISO3.length ? pickedISO3.slice() : RECAP_ISO3.slice();
+  const iso3ForQuery = pickedISO3.length ? pickedISO3 : RECAP_ISO3;
 
-  const url = 'https://api.reliefweb.int/v1/reports?appname='+encodeURIComponent(APPNAME);
+  const url = 'https://api.reliefweb.int/v1/reports?appname='+
+              encodeURIComponent(APPNAME);
 
   const body = {
-    limit: limit,
+    limit:  limit,
     offset: 0,
     filter:{
       operator:'AND',
       conditions:[
-        { field:'country.iso3', value: iso3 },
-        { field:'date.created', value:{ from: sinceISO } }
+        { field:'country.iso3', value: iso3ForQuery }
       ]
     },
     fields:{
-      include:['id','title','url','body','body-html','country','source','theme','disaster_type','date.created']
+      include:[
+        'id','title','url','body','body-html','country',
+        'source','theme','disaster_type','date.created'
+      ]
     },
     sort:['date.created:desc']
   };
@@ -402,22 +401,15 @@ async function rwFetch(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(body)
     });
-    const txt = await res.text();
     if(!res.ok){
+      const txt = await res.text().catch(()=>String(res.status));
       st.textContent = '불러오기 실패('+res.status+')';
-      out.innerHTML = '<div class="small err">HTTP '+res.status+' — '+txt+'</div>';
-      console.error('ReliefWeb 오류',res.status,txt);
+      out.innerHTML  = '<div class="small err">HTTP '+res.status+' — '+txt+'</div>';
       return;
     }
-    const json = JSON.parse(txt);
-    const data = (json && json.data) ? json.data : [];
-    st.textContent = '완료 ('+data.length+'개)';
 
-    if(!data.length){
-      out.innerHTML='<div class="small">조건에 맞는 문서가 없습니다.</div>';
-      currentItems = [];
-      return;
-    }
+    const json = await res.json();
+    const data = (json && json.data) ? json.data : [];
 
     currentItems = data.map(r=>{
       const f = r.fields || {};
@@ -432,23 +424,38 @@ async function rwFetch(){
         (f.source||[]).map(s=>s.name).join(', '),
         (f.country||[]).map(c=>c.name).join(', ')
       ].join(' | ');
-      const hdp = hdpScore(metaTxt + ' ' + bodyText);
-      const c15 = classifyC15(metaTxt + ' ' + bodyText, 3);
+      const hdp = hdpScore(metaTxt+' '+bodyText);
+      const c15 = classifyC15(metaTxt+' '+bodyText,3);
       return {
         id: r.id,
-        title: f.title || '',
-        url: f.url  || '',
+        title:   f.title || '',
+        url:     f.url  || '',
         created: f['date.created'] || '',
-        country: (f.country||[]).map(c=>c.name).join(', '),
-        source:  (f.source||[]).map(s=>s.name).join(', '),
-        theme:   (f.theme||[]).map(t=>t.name).join(', '),
-        type:    (f.disaster_type||[]).map(d=>d.name).join(', '),
+        country:(f.country||[]).map(c=>c.name).join(', '),
+        source: (f.source||[]).map(s=>s.name).join(', '),
+        theme:  (f.theme||[]).map(t=>t.name).join(', '),
+        type:   (f.disaster_type||[]).map(d=>d.name).join(', '),
         body: bodyText,
         hdp, c15
       };
     });
 
-    let rows='';
+    // 최근 일수 기준 로컬 필터링
+    currentItems = currentItems.filter(it=>{
+      const t = Date.parse(it.created);
+      return isNaN(t) ? true : (t >= sinceMillis);
+    });
+
+    if(!currentItems.length){
+      st.textContent = '완료 (0개, 조건에 맞는 문서 없음)';
+      out.innerHTML  = '<div class="small">조건에 맞는 문서가 없습니다.</div>';
+      return;
+    }
+
+    st.textContent = '완료 ('+currentItems.length+'개)';
+
+    // 테이블 렌더
+    let rows = '';
     currentItems.forEach((it,i)=>{
       rows += `
         <tr>
@@ -464,44 +471,62 @@ async function rwFetch(){
 
     out.innerHTML = `
       <table>
-        <thead><tr>
-          <th></th><th>제목</th><th>국가</th><th>출처</th><th>HDP%</th><th>C1~C15</th><th>URL</th>
-        </tr></thead>
+        <thead>
+          <tr>
+            <th></th><th>제목</th><th>국가</th><th>출처</th><th>HDP%</th><th>분류(C1~C15)</th><th>URL</th>
+          </tr>
+        </thead>
         <tbody>${rows}</tbody>
       </table>`;
 
-    // 제목 클릭 → 모달
+    // 제목 클릭 → 요약 모달
     Array.prototype.forEach.call(
-      out.querySelectorAll('.title-cell'),
+      out.querySelectorAll('tbody .title-cell'),
       (td,idx)=>{
         td.onclick = function(){
           const it = currentItems[idx];
-          const meta = [it.title,it.theme,it.type,it.source,it.country].filter(Boolean).join(' | ');
-          const sum  = summarizeText(it.body || meta, 5) || '요약을 생성할 수 없습니다.';
+          const meta = [it.country,it.source,it.theme,it.type]
+            .filter(Boolean).join(' · ');
+          const sumTxt = summarizeText(it.body || '',5) ||
+                         summarizeText(it.title+' '+meta,3) ||
+                         '요약을 생성할 수 없습니다.';
           document.getElementById('summary-title').textContent = it.title;
-          document.getElementById('summary-meta').textContent  = it.country+' · '+it.source;
-          document.getElementById('summary-hdp').innerHTML     = hbarHTML(it.hdp) +
-            (it.c15 && it.c15.length ? ('<div class="small" style="margin-top:6px">'+renderC15Badges(it.c15)+'</div>') : '');
+          document.getElementById('summary-meta').textContent  = meta;
+          document.getElementById('summary-hdp').innerHTML =
+            hbarHTML(it.hdp) +
+            (it.c15 && it.c15.length
+              ? `<div class="small" style="margin-top:6px">${renderC15Badges(it.c15)}</div>`
+              : '');
           document.getElementById('summary-content').innerHTML =
-            '<p>'+sum+'</p><hr/><p><a href="'+it.url+'" target="_blank" rel="noopener">원문 보기</a></p>';
-          document.getElementById('summary-modal').style.display='flex';
+            `<p>${sumTxt}</p><hr/><p><a href="${it.url}" target="_blank" rel="noopener">원문 보기</a></p>`;
+          document.getElementById('summary-modal').style.display = 'flex';
         };
       }
     );
 
   }catch(e){
     st.textContent = '불러오기 실패(fetch)';
-    out.innerHTML  = '<div class="small err">fetch error: '+e.message+'</div>';
-    console.error('fetch error',e);
+    out.innerHTML  = '<div class="small err">'+e.message+'</div>';
   }
 }
 
-// ===== 선택 항목 노트로 저장 =====
-function saveSelectedToNotes(){
-  if(!currentItems || !currentItems.length){
-    alert('먼저 가져오기를 실행하세요.');
-    return;
+// ---------------- 모달 닫기 ----------------
+document.getElementById('summary-close').onclick = function(){
+  document.getElementById('summary-modal').style.display = 'none';
+};
+document.getElementById('summary-modal').onclick = function(e){
+  if(e.target.id === 'summary-modal')
+    e.currentTarget.style.display = 'none';
+};
+window.addEventListener('keydown',e=>{
+  if(e.key === 'Escape'){
+    document.getElementById('summary-modal').style.display = 'none';
+    document.getElementById('country-modal').style.display  = 'none';
   }
+});
+
+// ---------------- 선택 항목 노트 저장 ----------------
+document.getElementById('rw-to-notes').onclick = function(){
   const checks = Array.prototype.filter.call(
     document.querySelectorAll('.rw-check'),
     cb=>cb.checked
@@ -510,23 +535,32 @@ function saveSelectedToNotes(){
     alert('저장할 항목을 선택하세요.');
     return;
   }
+  if(!currentItems || !currentItems.length){
+    alert('먼저 가져오기를 실행하세요.');
+    return;
+  }
+
   const db = getDB();
   const now = Date.now();
   let added = 0;
 
   checks.forEach(cb=>{
-    const idx = Number(cb.getAttribute('data-i'));
+    const idx = Number(cb.dataset.i);
     const it  = currentItems[idx];
+    if(!it) return;
+
     const meta = [it.title,it.country,it.source].join(' | ');
-    const summary = summarizeText(it.body || meta, 3) || meta;
+    const summary = summarizeText(it.body || meta,3) || meta;
     const id = 'rw-'+it.id;
+
     if(db.notes.some(n=>n.id===id)) return;
+
     db.notes.unshift({
       id,
       title: it.title,
-      body: it.body,
+      body:  it.body,
       country: it.country,
-      source: it.source,
+      source:  it.source,
       url: it.url,
       created: now,
       summary,
@@ -539,17 +573,15 @@ function saveSelectedToNotes(){
 
   setDB(db);
   renderNotes();
-  document.getElementById('rw-status').textContent =
-    added+'개 노트 저장 완료';
-}
+  const st = document.getElementById('rw-status');
+  st.textContent = added+'개 노트 저장 완료';
+};
 
-// ===== 초기 바인딩 =====
+// ---------------- 초기화 ----------------
 migrateNotesIfNeeded();
 renderNotes();
 
 document.getElementById('rw-fetch').addEventListener('click', rwFetch);
-document.getElementById('rw-to-notes').addEventListener('click', saveSelectedToNotes);
-
 document.getElementById('notes-refresh').onclick = function(){
   renderNotes(document.getElementById('notes-q').value);
 };
@@ -560,34 +592,6 @@ document.getElementById('notes-clear').onclick = function(){
 };
 document.getElementById('notes-q').addEventListener('input', function(e){
   renderNotes(e.target.value);
-});
-
-document.getElementById('summary-close').onclick = function(){
-  document.getElementById('summary-modal').style.display='none';
-};
-document.getElementById('summary-modal').onclick = function(e){
-  if(e.target.id==='summary-modal') e.currentTarget.style.display='none';
-};
-
-document.getElementById('open-country').onclick = openCountryModal;
-document.getElementById('country-close').onclick = closeCountryModal;
-document.getElementById('country-clear').onclick = function(){
-  pickedISO3 = [];
-  document.getElementById('country-chip').textContent='전체 20개국';
-  closeCountryModal();
-};
-document.getElementById('country-apply').onclick = function(){
-  const boxes = document.querySelectorAll('#country-grid input:checked');
-  pickedISO3 = Array.prototype.map.call(boxes, x=>x.value);
-  document.getElementById('country-chip').textContent =
-    pickedISO3.length ? (pickedISO3.length+'개국 선택') : '전체 20개국';
-  closeCountryModal();
-};
-
-// 전역 에러를 상태창에 표시 (디버깅용)
-window.addEventListener('error', function(e){
-  const st = document.getElementById('rw-status');
-  if(st) st.textContent = '스크립트 오류: '+e.message;
 });
 </script>
 </body>
