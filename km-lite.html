@@ -18,9 +18,6 @@ hr{border:none;border-top:1px solid var(--line);margin:12px 0}
 .flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .card{border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:8px;background:#101826}
 .badge{display:inline-block;padding:2px 6px;border-radius:999px;font-size:11px;border:1px solid var(--line);margin-right:4px;margin-bottom:2px}
-.badge-H{background:rgba(255,99,132,0.1);border-color:rgba(255,99,132,0.6)}
-.badge-D{background:rgba(54,162,235,0.1);border-color:rgba(54,162,235,0.6)}
-.badge-P{background:rgba(255,206,86,0.1);border-color:rgba(255,206,86,0.6)}
 table{width:100%;border-collapse:collapse;margin-top:8px}
 th,td{border:1px solid var(--line);padding:6px 8px;font-size:13px}
 th{background:#111a28}
@@ -64,12 +61,12 @@ Papua New Guinea, Solomon Islands, Timor-Leste
     <label for="rw-limit">최대 개수</label><br/>
     <input id="rw-limit" type="number" value="300" min="1" style="width:80px"/>
   </div>
-  <div style="position:relative;flex:1;min-width:220px">
+  <div>
     <label for="rw-country">국가 필터 (이름 또는 ISO3; 세미콜론 구분)</label><br/>
-    <input id="rw-country" placeholder="예: Jordan; JOR; Lebanon; LBN" style="width:100%"/>
+    <input id="rw-country" placeholder="예: Jordan; JOR; Lebanon; LBN" style="min-width:260px"/>
   </div>
   <div style="align-self:flex-end">
-    <button id="rw-fetch" type="button">가져오기</button>
+    <button id="rw-fetch">가져오기</button>
   </div>
   <div id="rw-status" class="small" style="min-width:160px"></div>
 </div>
@@ -85,7 +82,7 @@ Papua New Guinea, Solomon Islands, Timor-Leste
 
 <button id="rw-save-selected" style="margin-top:8px">선택 항목 노트로 저장(요약 포함)</button>
 
-<div id="rw-log" class="small" style="margin-top:4px;color:#ffb4b4;"></div>
+<div id="rw-log" class="small err" style="margin-top:4px;"></div>
 
 <hr/>
 
@@ -126,53 +123,20 @@ Papua New Guinea, Solomon Islands, Timor-Leste
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-/* ============================================================
+/* ===========================
    상수
-============================================================ */
+=========================== */
 const APPNAME = "HyunKim+recap_km_lite+a5Ttg7U8dlsep";
 
-/* 대상 20개국 자동완성용 */
-const COUNTRY_LIST = [
-  "Burundi","Central African Republic","Comoros","Guinea","Kenya","Mali",
-  "Sao Tome and Principe","Somalia","South Sudan","Zimbabwe",
-  "Armenia","Iran","Jordan","Lebanon","Palestine","Syria","Yemen",
-  "Papua New Guinea","Solomon Islands","Timor-Leste"
-];
-
-/* ISO3 → 이름 매핑 (필요시 추가) */
-const COUNTRY_MAP = {
-  "BDI":"Burundi",
-  "CAF":"Central African Republic",
-  "COM":"Comoros",
-  "GIN":"Guinea",
-  "KEN":"Kenya",
-  "MLI":"Mali",
-  "STP":"Sao Tome and Principe",
-  "SOM":"Somalia",
-  "SSD":"South Sudan",
-  "ZWE":"Zimbabwe",
-  "ARM":"Armenia",
-  "IRN":"Iran",
-  "JOR":"Jordan",
-  "LBN":"Lebanon",
-  "PSE":"Palestine",
-  "SYR":"Syria",
-  "YEM":"Yemen",
-  "PNG":"Papua New Guinea",
-  "SLB":"Solomon Islands",
-  "TLS":"Timor-Leste"
-};
-
-
-/* ============================================================
+/* ===========================
    localStorage DB
-============================================================ */
+=========================== */
 function getDB(){
   try{
     const raw = localStorage.getItem('km-lite-db');
     if(!raw) return {notes:[]};
     const parsed = JSON.parse(raw);
-    if(!parsed.notes) parsed.notes = [];
+    if(!parsed.notes) parsed.notes=[];
     return parsed;
   }catch(e){
     return {notes:[]};
@@ -182,10 +146,9 @@ function setDB(db){
   localStorage.setItem('km-lite-db', JSON.stringify(db || {notes:[]}));
 }
 
-
-/* ============================================================
+/* ===========================
    HDP 스코어링
-============================================================ */
+=========================== */
 const HDP_KEYWORDS = {
   H:['humanitarian','relief','emergency','food assistance','refugee','idp','crisis','aid','flood','drought','cholera','epidemic','earthquake','cyclone','conflict-affected'],
   D:['development','education','school','livelihood','income','value chain','infrastructure','capacity building','training','enterprise','job','market','productivity','policy','governance'],
@@ -193,7 +156,7 @@ const HDP_KEYWORDS = {
 };
 
 function hdpScore(text){
-  const t = (text || '').toLowerCase();
+  const t = (text||'').toLowerCase();
   const counts = {H:0,D:0,P:0};
   Object.keys(HDP_KEYWORDS).forEach(k=>{
     HDP_KEYWORDS[k].forEach(w=>{
@@ -209,22 +172,18 @@ function hdpScore(text){
 
 function hdpBar(hdp){
   if(!hdp) return '';
-  const total = Math.max(hdp.H+hdp.D+hdp.P,1);
-  const hPct = Math.round(hdp.H/total*100);
-  const dPct = Math.round(hdp.D/total*100);
-  const pPct = 100 - hPct - dPct;
+  const H = hdp.H||0, D = hdp.D||0, P = hdp.P||0;
   return `
     <div style="display:flex;height:10px;border-radius:999px;overflow:hidden;border:1px solid #243149">
-      <div style="flex:${hPct};background:rgba(255,99,132,0.8)" title="H ${hdp.H}%"></div>
-      <div style="flex:${dPct};background:rgba(54,162,235,0.8)" title="D ${hdp.D}%"></div>
-      <div style="flex:${pPct};background:rgba(255,206,86,0.8)" title="P ${hdp.P}%"></div>
+      <div style="flex:${H};background:rgba(255,99,132,0.7)" title="H ${H}%"></div>
+      <div style="flex:${D};background:rgba(54,162,235,0.7)" title="D ${D}%"></div>
+      <div style="flex:${P};background:rgba(255,206,86,0.7)" title="P ${P}%"></div>
     </div>`;
 }
 
-
-/* ============================================================
+/* ===========================
    C1~C15 규칙 기반 분류
-============================================================ */
+=========================== */
 const C15_RULES = [
   {code:'C1', name:'사업·프로젝트 개요 & 배경', kw:['project','programme','overview','background','context']},
   {code:'C2', name:'이해관계자 분석', kw:['stakeholder','community','beneficiary','partner','ngo']},
@@ -235,24 +194,24 @@ const C15_RULES = [
   {code:'C7', name:'위험·리스크·제한사항', kw:['risk','challenge','constraint','limitation','barrier']},
   {code:'C8', name:'지속가능성·전략적 연계', kw:['sustainability','exit strategy','transition','ownership']},
   {code:'C9', name:'젠더·사회적 보호', kw:['gender','women','girl','protection','gender-based']},
-  {code:'C10', name:'인도주의-개발-평화 넥서스', kw:['nexus','triple nexus','humanitarian','development','peace']},
-  {code:'C11', name:'기후변화·환경', kw:['climate','environment','resilience','disaster risk reduction']},
-  {code:'C12', name:'보건·WASH·영양', kw:['health','clinic','hospital','wash','water','sanitation','nutrition']},
-  {code:'C13', name:'교육·생계·경제', kw:['education','school','teacher','livelihood','job','income']},
-  {code:'C14', name:'거버넌스·제도·정책', kw:['policy','governance','institution','law','regulation']},
-  {code:'C15', name:'기타(맥락·분쟁·평화 등)', kw:['conflict','peace','migration','refugee','idp']}
+  {code:'C10',name:'인도주의-개발-평화 넥서스', kw:['nexus','triple nexus','humanitarian','development','peace']},
+  {code:'C11',name:'기후변화·환경', kw:['climate','environment','resilience','disaster risk reduction']},
+  {code:'C12',name:'보건·WASH·영양', kw:['health','clinic','hospital','wash','water','sanitation','nutrition']},
+  {code:'C13',name:'교육·생계·경제', kw:['education','school','teacher','livelihood','job','income']},
+  {code:'C14',name:'거버넌스·제도·정책', kw:['policy','governance','institution','law','regulation']},
+  {code:'C15',name:'기타(맥락·분쟁·평화 등)', kw:['conflict','peace','migration','refugee','idp']}
 ];
 
 function classifyC15(text,maxCount){
-  const t = (text || '').toLowerCase();
-  let scores = [];
+  const t = (text||'').toLowerCase();
+  const scores = [];
   C15_RULES.forEach(r=>{
     let s=0;
     r.kw.forEach(w=>{ if(t.includes(w)) s++; });
     if(s>0) scores.push({code:r.code,name:r.name,score:s});
   });
   scores.sort((a,b)=>b.score-a.score);
-  if(maxCount) scores = scores.slice(0,maxCount);
+  if(maxCount) return scores.slice(0,maxCount);
   return scores;
 }
 
@@ -261,12 +220,12 @@ function c15Badges(list){
   return list.map(x=>`<span class="badge">${x.code}</span>`).join(' ');
 }
 
-
-/* ============================================================
-   TF-IDF 요약 (간단 버전)
-============================================================ */
+/* ===========================
+   TF-IDF 요약
+=========================== */
 function tfidfSummary(text,maxSentences){
   maxSentences = maxSentences || 3;
+  if(!text) return '';
   const sents = text.split(/(?<=[\.!?])\s+/);
   if(sents.length <= maxSentences) return text;
 
@@ -276,7 +235,8 @@ function tfidfSummary(text,maxSentences){
       .split(/\s+/).filter(Boolean);
   }
 
-  const stop = new Set(['the','and','for','with','that','this','from','into','about','there','their','have','has','been','will','would','should','could','또는','그리고','하지만','위해','대한','에서','으로','에게','까지']);
+  const stop = new Set(['the','and','for','with','that','this','from','into','about','there','their','have','has','been','will','would','should','could',
+                        '또는','그리고','하지만','위해','대한','에서','으로','에게','까지']);
 
   const tf={}, df={}, sentTokens=[];
   for(let i=0;i<sents.length;i++){
@@ -284,13 +244,13 @@ function tfidfSummary(text,maxSentences){
     sentTokens.push(ws);
     const seen={};
     ws.forEach(w=>{
-      tf[w]=(tf[w]||0)+1;
+      tf[w] = (tf[w]||0)+1;
       if(!seen[w]){ df[w]=(df[w]||0)+1; seen[w]=1; }
     });
   }
 
-  const N = sents.length;
-  let scored=[];
+  const N=sents.length;
+  const scored=[];
   for(let i=0;i<sents.length;i++){
     let sc=0;
     sentTokens[i].forEach(w=>{
@@ -299,93 +259,64 @@ function tfidfSummary(text,maxSentences){
     });
     scored.push({i,score:sc});
   }
-
   scored.sort((a,b)=>b.score-a.score);
-  scored = scored.slice(0,maxSentences).sort((a,b)=>a.i-b.i);
-  return scored.map(x=>sents[x.i]).join(' ');
+  const top = scored.slice(0,maxSentences).sort((a,b)=>a.i-b.i);
+  return top.map(x=>sents[x.i]).join(' ');
 }
 
-
-/* ============================================================
-   국가 입력: 이름 + ISO3 정규화
-============================================================ */
-function normalizeCountries(rawList){
-  const outName = [];
-  const outIso  = [];
-
-  rawList.forEach(item=>{
-    const key = item.trim();
-    if(!key) return;
-
-    const upper = key.toUpperCase();
-
-    // ISO3 코드로 인식되는 경우
-    if(COUNTRY_MAP[upper]){
-      outName.push(COUNTRY_MAP[upper]);
-      outIso.push(upper);
-      return;
-    }
-
-    // 이름 그대로 넣기
-    outName.push(key);
-  });
-
-  return {outName, outIso};
-}
-
-
-/* ============================================================
+/* ===========================
    ReliefWeb API 불러오기
-============================================================ */
+=========================== */
 async function rwFetch(){
-  const daySpan   = parseInt(document.getElementById('rw-days').value || '365',10);
-  const limit     = parseInt(document.getElementById('rw-limit').value || '300',10);
-  const countryRaw= document.getElementById('rw-country').value || '';
+  const daySpan = parseInt(document.getElementById('rw-days').value||'365',10);
+  const limit   = parseInt(document.getElementById('rw-limit').value||'300',10);
+  const countryRaw = document.getElementById('rw-country').value||'';
+  const countries = countryRaw.split(';').map(s=>s.trim()).filter(Boolean);
 
   const out = document.getElementById('rw-out');
   const st  = document.getElementById('rw-status');
   const log = document.getElementById('rw-log');
-
-  st.textContent = '요청 중...';
+  st.textContent  = '요청 중...';
   log.textContent = '';
 
-  /* ReliefWeb은 YYYY-MM-DD 형식 권장 */
-  const sinceISO = new Date(Date.now()-daySpan*86400000)
-                     .toISOString()
-                     .slice(0,10);
+  // from 날짜: ISO 8601 +00:00 형식 (예: 2024-11-01T00:00:00+00:00)
+  const d = new Date(Date.now() - daySpan*86400000);
+  const isoZ = d.toISOString();           // 2024-11-01T00:00:00.000Z
+  const sinceISO = isoZ.replace('Z','+00:00');
 
-  const url = 'https://api.reliefweb.int/v1/reports?appname=' + encodeURIComponent(APPNAME);
+  const url = 'https://api.reliefweb.int/v1/reports?appname=' +
+              encodeURIComponent(APPNAME);
 
-  const rawList = countryRaw.split(';').map(s=>s.trim()).filter(Boolean);
-  const {outName, outIso} = normalizeCountries(rawList);
+  const fields = {
+    include:[
+      'id','title','url','body','body-html','country','source',
+      'theme','disaster_type','date.created'
+    ]
+  };
+  const sort = ['date.created:desc'];
 
-  const conditions = [
-    {field:'date.created',operator:'gte',value:sinceISO}
-  ];
-
-  if(outName.length && outIso.length){
-    conditions.push({
-      operator:'OR',
-      conditions:[
-        {field:'country', value:outName},
-        {field:'country.iso3', value:outIso}
-      ]
+  const filter = {
+    operator:'AND',
+    conditions:[
+      {
+        field:'date.created',
+        value:{from: sinceISO}   // ★ range 객체 사용
+      }
+    ]
+  };
+  if(countries.length){
+    filter.conditions.push({
+      field:'country',
+      value:countries
     });
-  }else if(outName.length){
-    conditions.push({field:'country', value:outName});
-  }else if(outIso.length){
-    conditions.push({field:'country.iso3', value:outIso});
   }
 
   const body = {
     limit:limit,
     offset:0,
-    filter:{operator:'AND',conditions:conditions},
-    fields:{include:[
-      'id','title','url','body','body-html','country','source',
-      'theme','disaster_type','date.created'
-    ]},
-    sort:['date.created:desc']
+    filter:filter,
+    fields:fields,
+    sort:sort
   };
 
   try{
@@ -397,19 +328,18 @@ async function rwFetch(){
 
     if(!res.ok){
       const txt = await res.text();
-      st.textContent = '불러오기 실패('+res.status+')';
+      st.textContent  = '불러오기 실패('+res.status+')';
       log.textContent = 'HTTP '+res.status+' — '+txt;
+      console.error('ReliefWeb 오류:', txt);
       return;
     }
 
     const json = await res.json();
     const data = json.data || [];
-
     st.textContent = '완료 ('+data.length+'개)';
 
     if(!data.length){
       out.innerHTML = '<div class="small">조건에 맞는 문서가 없습니다.</div>';
-      window._rwItems = [];
       return;
     }
 
@@ -420,17 +350,17 @@ async function rwFetch(){
       const meta = [
         f.title || '',
         (f.country||[]).map(c=>c.name).join(', '),
-        (f.source||[]).map(s=>s.name).join(', ')
+        (f.source||[]).map(s=>s.name||s).join(', ')
       ].join(' ');
-      const hdp = hdpScore(meta + ' ' + cleanBody);
-      const c15 = classifyC15(meta + ' ' + cleanBody,3);
+      const hdp = hdpScore(meta+' '+cleanBody);
+      const c15 = classifyC15(meta+' '+cleanBody,3);
       return {
         id:r.id,
         title:f.title || '',
         url:f.url || '',
         created:f['date.created'] || '',
         country:(f.country||[]).map(c=>c.name).join(', '),
-        source:(f.source||[]).map(s=>s.name).join(', '),
+        source:(f.source||[]).map(s=>s.name||s).join(', '),
         type:(f.disaster_type||[]).map(d=>d.name).join(', '),
         body:cleanBody,
         hdp:hdp,
@@ -438,14 +368,12 @@ async function rwFetch(){
       };
     });
 
-    let rows = '';
+    let rows='';
     window._rwItems.forEach((it,i)=>{
       rows += `
         <tr>
           <td><input type="checkbox" class="rw-check" data-i="${i}"></td>
-          <td class="title-cell" style="cursor:pointer;text-decoration:underline">
-            ${it.title}
-          </td>
+          <td class="title-cell" style="cursor:pointer;text-decoration:underline">${it.title}</td>
           <td>${it.country}</td>
           <td>${it.source}</td>
           <td>${hdpBar(it.hdp)}</td>
@@ -458,37 +386,34 @@ async function rwFetch(){
       <table>
         <thead>
           <tr>
-            <th></th><th>제목</th><th>국가</th><th>출처</th>
-            <th>HDP%</th><th>C1~C15</th><th>URL</th>
+            <th></th><th>제목</th><th>국가</th><th>출처</th><th>HDP%</th><th>C1~C15</th><th>URL</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>`;
 
-    // 제목 클릭 시 원문 텍스트 alert
+    // 제목 클릭 시 전문 보기
     out.querySelectorAll('.title-cell').forEach(td=>{
       td.onclick = function(){
         const idx = this.parentNode.querySelector('.rw-check').dataset.i;
         const it = window._rwItems[idx];
-        alert(it.title + '\n\n' + it.body);
+        alert(it.title+'\n\n'+it.body);
       };
     });
 
   }catch(e){
-    st.textContent = '불러오기 실패(fetch)';
+    st.textContent  = '불러오기 실패(fetch)';
     log.textContent = e.message;
+    console.error(e);
   }
 }
 
-
-/* ============================================================
+/* ===========================
    노트 저장
-============================================================ */
-function saveSelectedNotes(){
-  if(!window._rwItems || !window._rwItems.length){
-    alert('먼저 불러오기를 실행하세요.');
-    return;
-  }
+=========================== */
+document.getElementById('rw-save-selected').onclick = function(){
+  if(!window._rwItems){ alert('먼저 불러오기를 실행하세요.'); return; }
+
   const checks = document.querySelectorAll('.rw-check');
   const db = getDB();
   let added = 0;
@@ -497,8 +422,9 @@ function saveSelectedNotes(){
     if(!ch.checked) return;
     const idx = parseInt(ch.dataset.i,10);
     const it = window._rwItems[idx];
+
     const note = {
-      id:Date.now() + '-' + idx,
+      id:Date.now()+'-'+idx,
       title:it.title,
       url:it.url,
       created:new Date().toISOString(),
@@ -516,46 +442,42 @@ function saveSelectedNotes(){
   });
 
   setDB(db);
-  renderNotes();
+  renderNotes(document.getElementById('notes-q').value);
   renderDashboard();
-  alert(added + '개 노트 저장됨');
-}
+  alert(added+'개 노트 저장됨');
+};
 
-
-/* ============================================================
+/* ===========================
    대시보드 (Chart.js)
-============================================================ */
+=========================== */
 let hdpChart, c15Chart;
 
 function renderDashboard(){
   const db = getDB();
   const notes = db.notes || [];
 
-  let Hcnt=0,Dcnt=0,Pcnt=0;
+  let H=0,D=0,P=0;
   const agg={};
-
   notes.forEach(n=>{
-    if(n.hdp && n.hdp.H>0) Hcnt++;
-    if(n.hdp && n.hdp.D>0) Dcnt++;
-    if(n.hdp && n.hdp.P>0) Pcnt++;
+    if(n.hdp && n.hdp.H>0) H++;
+    if(n.hdp && n.hdp.D>0) D++;
+    if(n.hdp && n.hdp.P>0) P++;
     (n.c15||[]).forEach(c=>{ agg[c.code]=(agg[c.code]||0)+1; });
   });
 
-  // 기존 차트 제거
   if(hdpChart) hdpChart.destroy();
   if(c15Chart) c15Chart.destroy();
 
   const ctx1 = document.getElementById('hdp-chart').getContext('2d');
   hdpChart = new Chart(ctx1,{
     type:'doughnut',
-    data:{labels:['H','D','P'],datasets:[{data:[Hcnt,Dcnt,Pcnt]}]},
+    data:{labels:['H','D','P'],datasets:[{data:[H,D,P]}]},
     options:{plugins:{legend:{position:'bottom'}}}
   });
 
   const labels = Object.keys(agg);
   const vals   = labels.map(k=>agg[k]);
-
-  const ctx2 = document.getElementById('c15-chart').getContext('2d');
+  const ctx2   = document.getElementById('c15-chart').getContext('2d');
   c15Chart = new Chart(ctx2,{
     type:'bar',
     data:{labels:labels,datasets:[{data:vals}]},
@@ -563,14 +485,13 @@ function renderDashboard(){
   });
 }
 
-
-/* ============================================================
+/* ===========================
    노트 리스트 렌더
-============================================================ */
+=========================== */
 function renderNotes(filter){
-  filter = (filter || '').toLowerCase();
+  filter = (filter||'').toLowerCase();
   const box = document.getElementById('notes-list');
-  const db = getDB();
+  const db  = getDB();
   const notes = db.notes || [];
 
   if(!notes.length){
@@ -581,9 +502,10 @@ function renderNotes(filter){
   let html='';
   notes.forEach(n=>{
     const hay = [
-      n.title,n.summary,n.country,
-      n.hdpLabel,(n.c15||[]).map(x=>x.code).join(' ')
+      n.title,n.summary,n.country,n.hdpLabel,
+      (n.c15||[]).map(x=>x.code+' '+x.name).join(' ')
     ].join(' ').toLowerCase();
+
     if(filter && !hay.includes(filter)) return;
 
     html += `
@@ -592,15 +514,14 @@ function renderNotes(filter){
           <div><strong>${n.title}</strong></div>
           <div class="small mono">${n.created.slice(0,10)}</div>
         </div>
-        <div class="small" style="margin:6px 0">
-          <em>${n.country} · ${n.source} · ${n.type}</em> · ${n.hdpLabel}
-        </div>
+        <div class="small" style="margin:6px 0"><em>${n.country} · ${n.source} · ${n.type}</em> · ${n.hdpLabel}</div>
+        <div style="margin:6px 0">${hdpBar(n.hdp)}</div>
         <div class="small" style="margin:4px 0">${c15Badges(n.c15)}</div>
         <div class="small" style="max-height:5.5em;overflow:hidden;text-overflow:ellipsis;margin-top:4px">
-          ${n.summary}
+          ${n.summary||''}
         </div>
         <div class="small" style="margin-top:6px">
-          ${n.url?`<a href="${n.url}" target="_blank" rel="noopener">원문 링크</a> · `:''}
+          ${n.url ? `<a href="${n.url}" target="_blank" rel="noopener">원문 링크</a> · ` : ''}
           <a href="#" class="summary-link" data-id="${n.id}">요약 전체 보기</a>
         </div>
       </div>`;
@@ -608,161 +529,94 @@ function renderNotes(filter){
 
   box.innerHTML = html || '<div class="small">검색 결과가 없습니다.</div>';
 
-  // 모달 열기
   box.querySelectorAll('.summary-link').forEach(a=>{
     a.onclick = function(e){
       e.preventDefault();
       const id = this.dataset.id;
       const db = getDB();
-      const note = db.notes.find(n=>String(n.id)===String(id));
+      const note = (db.notes||[]).find(n=>String(n.id)===String(id));
       if(!note) return;
       document.getElementById('summary-title').textContent = note.title;
       document.getElementById('summary-meta').textContent =
         [note.country,note.source,note.type].filter(Boolean).join(' · ');
-      document.getElementById('summary-body').textContent = note.body || '';
+      document.getElementById('summary-body').textContent = note.summary || '';
       document.getElementById('summary-modal').style.display = 'flex';
     };
   });
 }
 
-
-/* ============================================================
-   모달 닫기
-============================================================ */
-function initModal(){
-  const modal = document.getElementById('summary-modal');
-  const closeBtn = document.getElementById('summary-close');
-  closeBtn.onclick = ()=>{ modal.style.display='none'; };
-  modal.onclick = e=>{ if(e.target===modal) modal.style.display='none'; };
-}
-
-
-/* ============================================================
-   국가 자동완성 (20개국)
-============================================================ */
-let suggestBox;  // 전역 참조
-
-function initCountrySuggest(){
-  const input = document.getElementById('rw-country');
-  suggestBox = document.createElement('div');
-  suggestBox.style.position = 'absolute';
-  suggestBox.style.background = '#101826';
-  suggestBox.style.border = '1px solid #253245';
-  suggestBox.style.zIndex = '30';
-  suggestBox.style.display = 'none';
-  suggestBox.style.maxHeight = '140px';
-  suggestBox.style.overflowY = 'auto';
-  suggestBox.style.padding = '4px';
-  document.body.appendChild(suggestBox);
-
-  function positionSuggestBox(){
-    const r = input.getBoundingClientRect();
-    suggestBox.style.left = r.left + window.scrollX + 'px';
-    suggestBox.style.top  = r.bottom + window.scrollY + 'px';
-    suggestBox.style.width= r.width + 'px';
-  }
-
-  input.addEventListener('input', function(){
-    const v = this.value.split(';').pop().trim();
-    if(v.length < 2){
-      suggestBox.style.display = 'none';
-      return;
-    }
-    const matches = COUNTRY_LIST
-      .filter(c => c.toLowerCase().includes(v.toLowerCase()))
-      .slice(0,10);
-
-    if(!matches.length){
-      suggestBox.style.display = 'none';
-      return;
-    }
-
-    suggestBox.innerHTML = matches.map(c=>
-      `<div class="small" style="padding:4px;cursor:pointer">${c}</div>`
-    ).join('');
-
-    positionSuggestBox();
-    suggestBox.style.display = 'block';
-
-    Array.from(suggestBox.children).forEach(item=>{
-      item.onclick = ()=>{
-        const parts = input.value.split(';').map(s=>s.trim()).filter(Boolean);
-        parts[parts.length-1] = item.textContent;
-        input.value = parts.join('; ') + '; ';
-        suggestBox.style.display = 'none';
-      };
-    });
-  });
-
-  document.addEventListener('click', e=>{
-    if(e.target!==input) suggestBox.style.display = 'none';
-  });
-}
-
-
-/* ============================================================
-   노트 CSV(Excel) 다운로드
-============================================================ */
-function exportNotesCSV(){
+/* ===========================
+   CSV 내보내기
+=========================== */
+document.getElementById('notes-export').onclick = function(){
   const db = getDB();
   const notes = db.notes || [];
-  if(!notes.length){
-    alert('저장된 노트가 없습니다.');
-    return;
-  }
+  if(!notes.length){ alert('내보낼 노트가 없습니다.'); return; }
 
-  let csv = "Title,Country,Source,HDP_H,HDP_D,HDP_P,C15,Summary,URL,Created\n";
+  const rows = [];
+  rows.push([
+    'id','title','country','source','type',
+    'H','D','P','C15','summary','url','created'
+  ]);
+
   notes.forEach(n=>{
-    csv += [
-      `"${(n.title||'').replace(/"/g,'""')}"`,
-      `"${(n.country||'').replace(/"/g,'""')}"`,
-      `"${(n.source||'').replace(/"/g,'""')}"`,
+    rows.push([
+      n.id,
+      (n.title||'').replace(/"/g,'""'),
+      n.country||'',
+      n.source||'',
+      n.type||'',
       n.hdp ? n.hdp.H : '',
       n.hdp ? n.hdp.D : '',
       n.hdp ? n.hdp.P : '',
-      `"${(n.c15||[]).map(c=>c.code).join('; ').replace(/"/g,'""')}"`,
-      `"${(n.summary||'').replace(/"/g,'""')}"`,
-      `"${(n.url||'').replace(/"/g,'""')}"`,
-      `"${(n.created||'').slice(0,10)}"`
-    ].join(',') + "\n";
+      (n.c15||[]).map(c=>c.code).join('|'),
+      (n.summary||'').replace(/"/g,'""'),
+      n.url||'',
+      n.created||''
+    ]);
   });
 
-  const blob = new Blob([csv],{type:"text/csv;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
+  const csv = rows.map(r=>r.map(x=>`"${x}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const a = document.createElement('a');
-  a.href = url;
+  a.href = URL.createObjectURL(blob);
   a.download = 'km-lite-notes.csv';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
-}
+  document.body.removeChild(a);
+};
 
+/* ===========================
+   모달 / 이벤트 바인딩
+=========================== */
+document.getElementById('summary-close').onclick = function(){
+  document.getElementById('summary-modal').style.display = 'none';
+};
+document.getElementById('summary-modal').onclick = function(e){
+  if(e.target.id === 'summary-modal'){
+    document.getElementById('summary-modal').style.display = 'none';
+  }
+};
 
-/* ============================================================
-   초기화
-============================================================ */
-window.onload = function(){
-  document.getElementById('rw-fetch').onclick = rwFetch;
-  document.getElementById('rw-save-selected').onclick = saveSelectedNotes;
-  document.getElementById('notes-refresh').onclick = function(){
-    renderNotes(document.getElementById('notes-q').value);
-    renderDashboard();
-  };
-  document.getElementById('notes-clear').onclick = function(){
-    if(!confirm('모든 저장된 노트를 삭제합니다. 계속할까요?')) return;
-    setDB({notes:[]});
-    renderNotes('');
-    renderDashboard();
-  };
-  document.getElementById('notes-q').oninput = function(e){
-    renderNotes(e.target.value);
-  };
-  document.getElementById('notes-export').onclick = exportNotesCSV;
+document.getElementById('rw-fetch').onclick = rwFetch;
 
-  initModal();
-  initCountrySuggest();
+document.getElementById('notes-refresh').onclick = function(){
+  renderNotes(document.getElementById('notes-q').value);
+  renderDashboard();
+};
+document.getElementById('notes-clear').onclick = function(){
+  if(!confirm('모든 저장된 노트를 삭제합니다. 계속할까요?')) return;
+  setDB({notes:[]});
   renderNotes('');
   renderDashboard();
 };
+document.getElementById('notes-q').addEventListener('input', function(e){
+  renderNotes(e.target.value);
+});
+
+/* 초기 렌더 */
+renderNotes('');
+renderDashboard();
 </script>
 </body>
 </html>
