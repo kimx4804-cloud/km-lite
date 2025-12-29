@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>km-lite v2.1 — recap 20개국 · tf-idf · hdp(binary) · risk(24개월) · c1~c15</title>
+<title>km-lite v2.2 — recap 20개국 · tf-idf · hdp(binary) · bar dashboard · c1~c15</title>
 
-<!-- chart.js (monthly 24m dashboard) -->
+<!-- chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <style>
@@ -16,7 +16,6 @@
   --line:#253245;
 
   --panel:#0f1620;
-  --panel2:#0c131c;
   --shadow: 0 12px 30px rgba(0,0,0,.35);
 
   --h-col:#3aa3ff;
@@ -34,7 +33,6 @@
 
   --focus: rgba(58,163,255,.25);
 }
-
 *{box-sizing:border-box}
 body{
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,Arial,sans-serif;
@@ -46,17 +44,16 @@ body{
   padding:18px;
 }
 h2{margin:0 0 10px;font-size:22px;letter-spacing:.2px}
-p{margin:0}
 .small{color:var(--mut);font-size:12px;line-height:1.45}
 .mono{font-family:ui-monospace,Consolas,Menlo,monospace}
 .err{color:#ffb4b4}
 hr{border:none;border-top:1px solid var(--line);margin:14px 0}
 
 textarea,input,button,select{
-  border-radius:10px;
+  border-radius:12px;
   padding:.55rem .7rem;
   font-size:14px;
-  border:1px solid var(--line);
+  border:1px solid rgba(255,255,255,.10);
   background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
   background-color: var(--panel);
   color:var(--fg);
@@ -73,20 +70,17 @@ button{
 }
 button:hover{filter:brightness(1.05)}
 button:active{transform:translateY(1px)}
-select{min-width:140px}
 
 .flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .card{
   border:1px solid rgba(255,255,255,.08);
-  border-radius:14px;
+  border-radius:16px;
   padding:12px;
   background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
   box-shadow: var(--shadow);
 }
 .chip{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
+  display:inline-flex; align-items:center; gap:6px;
   padding:4px 10px;
   border:1px solid rgba(255,255,255,.10);
   border-radius:999px;
@@ -94,7 +88,6 @@ select{min-width:140px}
   color:var(--mut);
   background: rgba(15,22,32,.6);
 }
-
 .badge{
   display:inline-block;
   padding:2px 8px;
@@ -105,20 +98,25 @@ select{min-width:140px}
   background: rgba(15,22,32,.6);
   margin-right:4px;margin-bottom:2px
 }
-
-/* sticky action bar */
 .stickybar{
   position:sticky; top:10px; z-index:5;
   background: rgba(11,15,20,.85);
   backdrop-filter: blur(8px);
   border:1px solid rgba(255,255,255,.08);
-  border-radius:14px;
+  border-radius:16px;
   padding:10px;
   margin:12px 0;
   box-shadow: var(--shadow);
 }
-
-/* tables */
+#rw-results{
+  margin-top:10px;
+  max-height:52vh;
+  overflow:auto;
+  border:1px solid rgba(255,255,255,.08);
+  padding:10px;
+  border-radius:16px;
+  background: rgba(15,22,32,.45);
+}
 table{border-collapse:collapse;width:100%;font-size:13px}
 td,th{
   border:1px solid rgba(255,255,255,.08);
@@ -128,24 +126,12 @@ td,th{
 }
 thead th{background: rgba(255,255,255,.03)}
 
-/* results container */
-#rw-results{
-  margin-top:10px;
-  max-height:52vh;
-  overflow:auto;
-  border:1px solid rgba(255,255,255,.08);
-  padding:10px;
-  border-radius:14px;
-  background: rgba(15,22,32,.45);
-}
-
-/* hdp binary badges */
 .hdp-badge{
   display:inline-block;
   padding:2px 8px;
   border-radius:8px;
   font-size:11px;
-  font-weight:700;
+  font-weight:800;
   margin-right:4px;
 }
 .hdp-on{color:#000}
@@ -154,41 +140,12 @@ thead th{background: rgba(255,255,255,.03)}
 .hdp-P{background:var(--p-col)}
 .hdp-off{background:var(--off); color:#8da0b5}
 
-/* modals */
-.modal{
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.62);
-  z-index:1000;
-  align-items:center;
-  justify-content:center;
-}
-.modal>div{
-  background: rgba(11,15,20,.92);
-  backdrop-filter: blur(10px);
-  color:var(--fg);
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:16px;
-  box-shadow: var(--shadow);
-}
-#summary-box{width: min(860px,92vw); max-height:82vh; overflow:auto; padding:18px}
-#country-box{width: min(860px,92vw); max-height:82vh; overflow:auto; padding:16px}
-.country-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-  gap:10px;
-  margin-top:10px;
-}
-
-/* risk/conflict visuals */
 .risk-badge{
   display:inline-block;
   padding:3px 10px;
   border-radius:999px;
   font-size:11px;
-  font-weight:800;
-  letter-spacing:.2px;
+  font-weight:900;
 }
 .risk-low{background:var(--risk-low); color:#000}
 .risk-med{background:var(--risk-med); color:#000}
@@ -215,44 +172,48 @@ thead th{background: rgba(255,255,255,.03)}
   padding:2px 8px;
   border-radius:999px;
   font-size:11px;
-  font-weight:700;
+  font-weight:800;
 }
 .conf-low{background:var(--conf-low);color:#000}
 .conf-med{background:var(--conf-med);color:#000}
 .conf-high{background:var(--conf-high);color:#000}
 
-/* dashboard */
-#dash-wrap{
-  margin-top:12px;
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.62);
+  z-index:1000;
+  align-items:center;
+  justify-content:center;
 }
-.dash-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  gap:10px;
-  flex-wrap:wrap;
+.modal>div{
+  background: rgba(11,15,20,.92);
+  backdrop-filter: blur(10px);
+  color:var(--fg);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:16px;
+  box-shadow: var(--shadow);
 }
-.dash-grid{
+#summary-box{width: min(860px,92vw); max-height:82vh; overflow:auto; padding:18px}
+#country-box{width: min(860px,92vw); max-height:82vh; overflow:auto; padding:16px}
+#detail-box{width: min(980px,94vw); max-height:86vh; overflow:auto; padding:16px}
+
+.country-grid{
   display:grid;
-  grid-template-columns: 320px 1fr;
-  gap:12px;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:10px;
   margin-top:10px;
 }
-@media (max-width: 980px){
-  .dash-grid{grid-template-columns: 1fr}
-}
-.dash-left{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
+
 .stat-row{
   display:grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap:10px;
+  margin-top:10px;
 }
-@media (max-width: 620px){
-  .stat-row{grid-template-columns: 1fr}
+@media (max-width: 860px){
+  .stat-row{grid-template-columns: repeat(2, 1fr);}
 }
 .stat{
   border:1px solid rgba(255,255,255,.08);
@@ -261,26 +222,44 @@ thead th{background: rgba(255,255,255,.03)}
   background: rgba(15,22,32,.45);
 }
 .stat .k{font-size:11px;color:var(--mut)}
-.stat .v{font-size:18px;font-weight:800;margin-top:2px}
-#dash-table-wrap{
-  max-height: 360px;
-  overflow:auto;
+.stat .v{font-size:18px;font-weight:900;margin-top:2px}
+
+.two-col{
+  display:grid;
+  grid-template-columns: 1.2fr .8fr;
+  gap:12px;
+  margin-top:12px;
+}
+@media (max-width: 980px){
+  .two-col{grid-template-columns: 1fr;}
+}
+.panel{
   border:1px solid rgba(255,255,255,.08);
   border-radius:14px;
+  padding:12px;
   background: rgba(15,22,32,.45);
 }
-#dash-table-wrap table{font-size:12px}
-.canvas-box{
+.panel h3{
+  margin:0 0 8px;
+  font-size:14px;
+  letter-spacing:.2px;
+}
+.list{
+  display:flex; flex-direction:column; gap:8px;
+}
+.item{
   border:1px solid rgba(255,255,255,.08);
-  border-radius:14px;
+  border-radius:12px;
   padding:10px;
-  background: rgba(15,22,32,.45);
+  background: rgba(255,255,255,.02);
 }
+a{color:#9fd0ff}
+a:hover{filter:brightness(1.1)}
 </style>
 </head>
 
 <body>
-<h2>recap 경량 지식관리체계 v2.1 (20개국 자동수집 · tf-idf · hdp(binary) · risk(24개월) · c1~c15)</h2>
+<h2>recap 경량 지식관리체계 v2.2 (bar dashboard · 국가 클릭 상세)</h2>
 <p class="small">
   권장: 로컬 서버에서 열기 (<span class="mono">py -m http.server 8000</span>).<br/>
   노트/요약은 <span class="mono">localStorage</span>에 저장됩니다.
@@ -302,14 +281,14 @@ Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Pr
   </div>
 
   <div class="small" style="margin-top:8px;color:#9fb2c8">
-    주의: 이 대시보드는 ReliefWeb 문서 텍스트를 기반으로 계산한 <span class="mono">riskScore/conflictHeat</span>의 “신호”입니다(관측 데이터 아님).
+    주의: risk/conflict는 ReliefWeb 문서 텍스트 기반 “신호”입니다(관측 데이터 아님).
   </div>
 </div>
 
 <div class="stickybar flex" style="justify-content:space-between">
   <div class="small">
-    체크 후 저장하면 하단 패널에 누적됩니다.<br/>
-    v2.1: 국가별 월별(최근 24개월) risk/conflict 시계열 + 그래프.
+    대시보드: 전체 국가가 한 화면에 보이도록 “가로 막대(bar)”로 요약합니다.<br/>
+    막대를 클릭하면 국가 상세(분포·상위 태그·최근 문서)가 뜹니다.
   </div>
   <div class="flex">
     <button id="btn-risk-narrative">최근 30일 위험 요약 생성</button>
@@ -317,17 +296,14 @@ Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Pr
   </div>
 </div>
 
-<!-- monthly dashboard -->
-<div id="dash-wrap" class="card">
-  <div class="dash-header">
+<!-- BAR DASHBOARD -->
+<div class="card">
+  <div class="flex" style="justify-content:space-between;align-items:flex-end">
     <div>
-      <div style="font-weight:800">국가별 위험 대시보드 (월별, 최근 24개월)</div>
-      <div class="small">risk = 텍스트 기반 조기경보 스코어 · conflict = heat(1–5)</div>
+      <div style="font-weight:900">국가별 요약 대시보드 (bar)</div>
+      <div class="small">기본 집계 창: 최근 24개월(클라이언트 필터) · 클릭 시 상세</div>
     </div>
     <div class="flex">
-      <label class="small">국가</label>
-      <select id="dash-country"></select>
-
       <label class="small">지표</label>
       <select id="dash-metric">
         <option value="riskScore">riskScore</option>
@@ -336,45 +312,25 @@ Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Pr
 
       <label class="small">집계</label>
       <select id="dash-agg">
-        <option value="mean">월 평균</option>
-        <option value="max">월 최대</option>
+        <option value="mean">평균</option>
+        <option value="max">최대</option>
       </select>
 
-      <button id="dash-recalc">재계산</button>
+      <label class="small">정렬</label>
+      <select id="dash-sort">
+        <option value="desc">내림차순</option>
+        <option value="name">국가명</option>
+      </select>
+
+      <button id="dash-refresh">갱신</button>
     </div>
   </div>
 
-  <div class="dash-grid">
-    <div class="dash-left">
-      <div class="stat-row">
-        <div class="stat">
-          <div class="k">최근 24개월 중 데이터 있는 월</div>
-          <div class="v" id="stat-nmonths">0</div>
-        </div>
-        <div class="stat">
-          <div class="k">선택 집계의 최근값</div>
-          <div class="v" id="stat-recent">-</div>
-        </div>
-        <div class="stat">
-          <div class="k">선택 집계의 최대값</div>
-          <div class="v" id="stat-max">-</div>
-        </div>
-      </div>
-
-      <div class="canvas-box">
-        <div class="small" style="margin-bottom:8px;font-weight:700">월별 테이블</div>
-        <div id="dash-table-wrap">
-          <table>
-            <thead><tr><th>월(yyyy-mm)</th><th>value</th></tr></thead>
-            <tbody id="dash-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="canvas-box">
-      <div class="small" style="margin-bottom:8px;font-weight:700">그래프</div>
-      <canvas id="dash-chart" height="120"></canvas>
+  <!-- 작게: 높이를 고정하고, 20개국이 모두 보이도록 가로 bar -->
+  <div class="panel" style="margin-top:12px;padding:10px">
+    <canvas id="dash-bar" height="320"></canvas>
+    <div class="small" style="margin-top:8px;color:#9fb2c8">
+      팁: 막대 클릭 → 국가 상세 모달.
     </div>
   </div>
 </div>
@@ -406,7 +362,7 @@ Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Pr
   </div>
 </div>
 
-<!-- country modal -->
+<!-- country filter modal -->
 <div id="country-modal" class="modal">
   <div id="country-box">
     <div class="flex" style="justify-content:space-between">
@@ -422,13 +378,42 @@ Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Pr
   </div>
 </div>
 
+<!-- detail modal (country click) -->
+<div id="detail-modal" class="modal">
+  <div id="detail-box">
+    <div class="flex" style="justify-content:space-between;align-items:flex-start">
+      <div>
+        <div id="detail-title" style="font-weight:950;font-size:18px;"></div>
+        <div id="detail-sub" class="small" style="margin-top:4px;color:#9fb2c8"></div>
+      </div>
+      <button id="detail-close">닫기</button>
+    </div>
+
+    <div class="stat-row" id="detail-stats"></div>
+
+    <div class="two-col">
+      <div class="panel">
+        <h3>분포/상위 신호</h3>
+        <div id="detail-signals" class="small"></div>
+      </div>
+      <div class="panel">
+        <h3>최근 문서(상위 10)</h3>
+        <div id="detail-recent" class="list"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h3>HDP / C코드 / Source 상위</h3>
+      <div id="detail-top" class="small"></div>
+    </div>
+  </div>
+</div>
+
 <script>
-/* =========================================================
-  config
-========================================================= */
-// reliefweb appname 이 승인 문제를 일으킬 수 있어 기본값을 안전하게 둡니다.
-// 본인 appname이 있고 승인되어 있으면 여기만 바꾸면 됩니다.
-const APPNAME = "km-lite"; // 예: "HyunKim+recap_km_lite+a5Ttg7U8"
+/* =========================
+   config
+========================= */
+const APPNAME = "km-lite"; // 승인된 appname이 있으면 교체
 const DB_KEY  = "km-lite-db";
 
 const RECAP_NAMES = [
@@ -446,12 +431,12 @@ const RECAP_ISO3 = [
 const RECAP_MAP = RECAP_NAMES.map((n,i)=>({name:n,iso3:RECAP_ISO3[i]}));
 
 let pickedISO3 = [];
-let currentItems = []; // fetched items
-let dashChart = null;
+let currentItems = [];   // fetched items
+let dashBarChart = null; // Chart.js instance
 
-/* =========================================================
-  utils
-========================================================= */
+/* =========================
+   utils
+========================= */
 function escapeHTML(s){
   return String(s||'')
     .replaceAll('&','&amp;')
@@ -462,14 +447,20 @@ function escapeHTML(s){
 }
 function escapeAttr(s){ return escapeHTML(s).replaceAll('`','&#096;'); }
 
-window.addEventListener('error', function(e){
-  const st=document.getElementById('rw-status');
-  if(st) st.textContent='스크립트 오류: '+e.message;
-});
+function ymKey(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  return `${y}-${m}`;
+}
+function monthsAgoDate(n){
+  const now=new Date();
+  return new Date(now.getFullYear(), now.getMonth()-n, 1);
+}
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
-/* =========================================================
-  country modal
-========================================================= */
+/* =========================
+   country modal
+========================= */
 function openCountryModal(){
   const grid=document.getElementById('country-grid');
   let html='';
@@ -501,11 +492,11 @@ document.getElementById('country-apply').onclick=function(){
   closeCountryModal();
 };
 
-/* =========================================================
-  tf-idf summary (same as your stable version)
-========================================================= */
+/* =========================
+   tf-idf summary
+========================= */
 function summarizeText(text,maxSentences){
-  maxSentences = maxSentences||5;
+  maxSentences=maxSentences||5;
   if(!text) return '';
   let sents=text.split(/(?<=[.!?。！？])\s+|[\r\n]{2,}/)
     .map(s=>s.trim()).filter(s=>s.length>20);
@@ -531,7 +522,6 @@ function summarizeText(text,maxSentences){
       if(!seen[w]){ df[w]=(df[w]||0)+1; seen[w]=1; }
     }
   }
-
   const N=sents.length;
   const scored=[];
   for(let k=0;k<sents.length;k++){
@@ -549,9 +539,9 @@ function summarizeText(text,maxSentences){
   return pick.map(x=>sents[x.i]).join(' ');
 }
 
-/* =========================================================
-  hdp binary
-========================================================= */
+/* =========================
+   hdp binary
+========================= */
 const HDP_DICT = {
   H:['emergency','relief','response','humanitarian','displacement','refugee','cholera','outbreak','famine','flood','earthquake','evacuation','cash assistance','wash cluster','rapid'],
   D:['development','infrastructure','education','school','clinic','health system','primary care','livelihoods','capacity building','policy','programme','investment','training','supply chain','renewable','solar','water supply','monitoring','m&e'],
@@ -571,9 +561,9 @@ function hbarHTML(score){
   return `<div>${hx}${dx}${px}</div>`;
 }
 
-/* =========================================================
-  risk/conflict/policy analyzer (same as stable v2.0)
-========================================================= */
+/* =========================
+   risk/conflict/policy
+========================= */
 const RISK_DICT = {
   security: [
     'security incident','armed group','militia','attack','shelling','airstrike','kidnapping',
@@ -664,9 +654,9 @@ function analyzeRiskAndConflict(text){
   for(const term of POLICY_TERMS){
     if(T.includes(term.toLowerCase())){ policy=true; break; }
   }
-
   return { riskScore:rawScore, riskLevel:level, riskTags:tags, impactScore:impactBase, conflictIndex, policyFlag:policy };
 }
+
 function renderRiskBadge(r){
   if(!r) return '';
   const txt = r.riskLevel==='high' ? 'High' : (r.riskLevel==='med'?'Med':'Low');
@@ -675,21 +665,20 @@ function renderRiskBadge(r){
   return `<span class="risk-badge ${cls}">${txt}</span>${policy}`;
 }
 function renderImpactBadge(score){
-  const s = score || 1;
+  const s=score||1;
   return `<span class="impact-badge">Impact ${s}</span>`;
 }
 function renderConflictBadge(idx){
-  const i = idx || 1;
-  let cls='conf-low', label=`Heat ${i}`;
+  const i=idx||1;
+  let cls='conf-low';
   if(i>=5) cls='conf-high';
   else if(i>=3) cls='conf-med';
-  else cls='conf-low';
-  return `<span class="conflict-badge ${cls}">${label}</span>`;
+  return `<span class="conflict-badge ${cls}">Heat ${i}</span>`;
 }
 
-/* =========================================================
-  c1~c15 classifier (stable hybrid)
-========================================================= */
+/* =========================
+   c1~c15
+========================= */
 const CODES = {
   C1:{name:'사업·프로젝트 개요 & 배경',core:['background','project overview','project description','context analysis','needs assessment','situation analysis','problem statement','맥락','배경','현황 분석'],related:['objective','overall goal','target population','fragile context','conflict-affected','humanitarian setting','목표','취지'],ref:['introduction','overview','summary']},
   C2:{name:'이해관계자 분석',core:['stakeholder analysis','beneficiary mapping','power analysis','actor mapping','stakeholder mapping','수혜자 분석','이해관계자 분석'],related:['beneficiary','local government','ngo','civil society','private sector','community-based organization','partner mapping','거버넌스 구조'],ref:['coordination','partner','participation']},
@@ -707,7 +696,6 @@ const CODES = {
   C14:{name:'교훈 & 확산 가능한 모형',core:['lessons learned','lesson learned','key lessons','good practices','promising practices','scalable model','replicable model','교훈 및 시사점'],related:['case study','success story','innovation','pilot model','scaling strategy'],ref:['experience','takeaways']},
   C15:{name:'한계 및 권고사항',core:['limitations','study limitations','key limitations','recommendations','policy recommendations','strategic recommendations','한계점','권고 사항'],related:['challenges','bottlenecks','constraints','areas for improvement','further work is needed'],ref:['lesson for future','way forward']}
 };
-
 function classifyC15(text, topN){
   topN = topN || 3;
   if(!text) return [];
@@ -753,9 +741,9 @@ function renderC15Badges(arr){
   return arr.map(x=>`<span class="badge" title="${escapeAttr(x.name)}">${x.code}</span>`).join(' ');
 }
 
-/* =========================================================
-  DB
-========================================================= */
+/* =========================
+   DB
+========================= */
 function getDB(){
   try{ return JSON.parse(localStorage.getItem(DB_KEY)||'{"notes":[]}'); }
   catch(e){ return {notes:[]}; }
@@ -795,7 +783,7 @@ function renderNotes(filter){
     html += `
       <div class="card" style="background:rgba(15,22,32,.35)">
         <div class="flex" style="justify-content:space-between">
-          <div style="font-weight:800">${escapeHTML(n.title)}</div>
+          <div style="font-weight:900">${escapeHTML(n.title)}</div>
           <div class="small mono">${new Date(n.created).toISOString().slice(0,10)}</div>
         </div>
         <div class="small" style="margin-top:6px;color:#9fb2c8"><em>${escapeHTML(n.country||'')}</em></div>
@@ -804,7 +792,7 @@ function renderNotes(filter){
         <div class="small" style="margin-top:6px">${renderC15Badges(n.c15)}</div>
         <div style="margin-top:8px">${escapeHTML(n.summary||'')}</div>
         <div class="small" style="margin-top:8px;color:#9fb2c8">
-          ${(n.risk?.riskTags?.length) ? ('risk tags: '+n.risk.riskTags.join(', ')) : ''}
+          ${(n.risk?.riskTags?.length) ? ('risk tags: '+escapeHTML(n.risk.riskTags.join(', '))) : ''}
         </div>
         <div class="flex" style="margin-top:10px">
           ${n.url?`<a href="${escapeAttr(n.url)}" target="_blank" rel="noopener">원문 링크</a>`:''}
@@ -824,158 +812,293 @@ function renderNotes(filter){
   });
 }
 
-/* =========================================================
-  monthly dashboard (24 months)
-========================================================= */
-function ymKey(d){
-  const y=d.getFullYear();
-  const m=String(d.getMonth()+1).padStart(2,'0');
-  return `${y}-${m}`;
-}
-function lastNMonthsKeys(n){
-  const keys=[];
-  const now=new Date();
-  const base=new Date(now.getFullYear(), now.getMonth(), 1);
-  for(let i=n-1;i>=0;i--){
-    const d=new Date(base.getFullYear(), base.getMonth()-i, 1);
-    keys.push(ymKey(d));
-  }
-  return keys;
+/* =========================
+   dashboard aggregation (bar)
+   - window: last 24 months (client-side)
+========================= */
+function getWindowedItems24m(){
+  const cutoff = monthsAgoDate(24).getTime();
+  return currentItems.filter(it=>{
+    const t=Date.parse(it.created||'');
+    return !isNaN(t) && t>=cutoff;
+  });
 }
 
-function computeMonthlySeries(countryName, metric, agg){
-  const keys = lastNMonthsKeys(24);
-  const buckets = {};
-  for(const k of keys) buckets[k]=[];
+function aggregateByCountry(items, metric, agg){
+  const map = {};
+  for(const c of RECAP_NAMES) map[c]=[];
 
-  for(const it of currentItems){
-    // IMPORTANT: multi-country support (fix for "Afghanistan first country" problem)
-    const arr = it.countriesArr || [];
-    if(!arr.includes(countryName)) continue;
-
-    const t = Date.parse(it.created || '');
-    if(isNaN(t)) continue;
-
-    const k = ymKey(new Date(t));
-    if(!(k in buckets)) continue;
-
-    const v = (metric==='conflictIndex') ? (it.risk?.conflictIndex ?? null)
-            : (it.risk?.riskScore ?? null);
+  for(const it of items){
+    const v = (metric==='conflictIndex')
+      ? (it.risk?.conflictIndex ?? null)
+      : (it.risk?.riskScore ?? null);
     if(v===null || v===undefined) continue;
 
-    buckets[k].push(Number(v));
+    // multi-country: 문서에 포함된 모든 국가에 동일 신호를 부여(텍스트 신호 관점에서 합리적)
+    for(const c of (it.countriesArr||[])){
+      if(map[c]) map[c].push(Number(v));
+    }
   }
 
-  const series = keys.map(k=>{
-    const xs = buckets[k];
-    if(!xs.length) return {k, v:null, n:0};
-    if(agg==='max') return {k, v:Math.max(...xs), n:xs.length};
-    const mean = xs.reduce((a,b)=>a+b,0)/xs.length;
-    return {k, v:mean, n:xs.length};
-  });
-
-  return series;
+  const out = [];
+  for(const c of Object.keys(map)){
+    const xs = map[c];
+    if(!xs.length){
+      out.push({country:c, value:null, n:0});
+      continue;
+    }
+    const value = (agg==='max')
+      ? Math.max(...xs)
+      : xs.reduce((a,b)=>a+b,0)/xs.length;
+    out.push({country:c, value, n:xs.length});
+  }
+  return out;
 }
 
-function updateDash(){
-  const country = document.getElementById('dash-country').value;
-  const metric  = document.getElementById('dash-metric').value;
-  const agg     = document.getElementById('dash-agg').value;
+function renderDashboardBar(){
+  const metric = document.getElementById('dash-metric').value;
+  const agg    = document.getElementById('dash-agg').value;
+  const sort   = document.getElementById('dash-sort').value;
 
-  if(!country){
-    document.getElementById('dash-tbody').innerHTML='';
-    document.getElementById('stat-nmonths').textContent='0';
-    document.getElementById('stat-recent').textContent='-';
-    document.getElementById('stat-max').textContent='-';
-    if(dashChart){ dashChart.destroy(); dashChart=null; }
-    return;
-  }
-
-  const series = computeMonthlySeries(country, metric, agg);
-
-  const nonEmpty = series.filter(x=>x.v!==null);
-  document.getElementById('stat-nmonths').textContent=String(nonEmpty.length);
-
-  const recent = (() => {
-    for(let i=series.length-1;i>=0;i--){
-      if(series[i].v!==null) return series[i].v;
-    }
-    return null;
-  })();
-
-  const maxv = nonEmpty.length ? Math.max(...nonEmpty.map(x=>x.v)) : null;
-
-  const fmt = (v)=>{
-    if(v===null || v===undefined) return '-';
-    if(metric==='conflictIndex') return String(Math.round(v*10)/10);
-    return String(Math.round(v*10)/10);
-  };
-
-  document.getElementById('stat-recent').textContent = fmt(recent);
-  document.getElementById('stat-max').textContent    = fmt(maxv);
-
-  // table
-  let html='';
-  for(const x of series){
-    html += `<tr>
-      <td class="mono">${x.k}</td>
-      <td>${x.v===null ? '—' : fmt(x.v)} <span class="small" style="margin-left:6px;color:#7890aa">n=${x.n}</span></td>
-    </tr>`;
-  }
-  document.getElementById('dash-tbody').innerHTML=html;
-
-  // chart
-  const labels = series.map(x=>x.k);
-  const data   = series.map(x=>x.v);
-
-  const ctx = document.getElementById('dash-chart').getContext('2d');
-  if(dashChart){ dashChart.destroy(); dashChart=null; }
-
-  dashChart = new Chart(ctx, {
-    type:'line',
-    data:{
-      labels,
-      datasets:[{
-        label: `${country} — ${metric} (${agg})`,
-        data,
-        spanGaps:false,
-        tension:0.25
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{
-        legend:{labels:{color:'#cfe0f5'}},
-        tooltip:{mode:'index', intersect:false}
-      },
-      scales:{
-        x:{ticks:{color:'#9bb2cc', maxRotation:0, autoSkip:true}},
-        y:{ticks:{color:'#9bb2cc'}, grid:{color:'rgba(255,255,255,.06)'}}
-      }
-    }
-  });
-}
-
-function refreshDashCountryOptions(){
-  const sel = document.getElementById('dash-country');
-
-  // IMPORTANT: dropdown은 항상 recap 목록(또는 선택된 iso3)으로 고정 (Afghanistan 섞이는 문제 방지)
+  // 표시할 국가 목록: 필터가 있으면 그 국가만, 아니면 20개국
   const names = (pickedISO3.length
     ? RECAP_MAP.filter(x => pickedISO3.includes(x.iso3)).map(x => x.name)
     : RECAP_NAMES
   );
 
-  sel.innerHTML = names.map(c=>`<option value="${escapeAttr(c)}">${escapeHTML(c)}</option>`).join('')
-    || `<option value="">(데이터 없음)</option>`;
+  const items24 = getWindowedItems24m();
+  const aggAll  = aggregateByCountry(items24, metric, agg).filter(x=>names.includes(x.country));
 
-  sel.value = names[0] || '';
-  updateDash();
+  // 정렬
+  let arr = aggAll.slice();
+  if(sort==='name'){
+    arr.sort((a,b)=>a.country.localeCompare(b.country));
+  }else{
+    // null은 맨 아래로
+    arr.sort((a,b)=>{
+      const av=(a.value===null?-Infinity:a.value);
+      const bv=(b.value===null?-Infinity:b.value);
+      return (bv-av);
+    });
+  }
+
+  const labels = arr.map(x=>x.country);
+  const data   = arr.map(x=>x.value);
+
+  // chart height: 20개국이면 320px로 충분하게 고정(요청: 작게)
+  const canvas = document.getElementById('dash-bar');
+  canvas.height = clamp(labels.length*16 + 60, 240, 360);
+
+  const ctx = canvas.getContext('2d');
+  if(dashBarChart){ dashBarChart.destroy(); dashBarChart=null; }
+
+  dashBarChart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        label: `24개월 ${agg} · ${metric}`,
+        data
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'#cfe0f5'}},
+        tooltip:{
+          callbacks:{
+            label:(ctx)=>{
+              const v=ctx.raw;
+              const i=ctx.dataIndex;
+              const n=arr[i]?.n ?? 0;
+              return `${ctx.dataset.label}: ${v===null?'—':Math.round(v*10)/10} (n=${n})`;
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{color:'#9bb2cc'}, grid:{color:'rgba(255,255,255,.06)'}},
+        y:{ticks:{color:'#9bb2cc'}, grid:{display:false}}
+      },
+      onClick:(evt, els)=>{
+        if(!els || !els.length) return;
+        const idx = els[0].index;
+        const c = labels[idx];
+        openCountryDetail(c);
+      }
+    }
+  });
 }
 
-/* =========================================================
-  reliefweb fetch (FIXED created parsing + no broken date filters)
-========================================================= */
+/* =========================
+   detail modal (country click)
+   - no time series table
+   - show distributions + top lists + recent docs
+========================= */
+function topNFromCounts(obj, n){
+  const arr = Object.entries(obj||{}).sort((a,b)=>b[1]-a[1]).slice(0,n);
+  return arr;
+}
+function openCountryDetail(country){
+  const items24 = getWindowedItems24m().filter(it => (it.countriesArr||[]).includes(country));
+  const items30 = items24.filter(it=>{
+    const t=Date.parse(it.created||'');
+    return !isNaN(t) && t >= (Date.now() - 30*86400000);
+  });
+
+  // stats
+  const total = items24.length;
+  const last30 = items30.length;
+
+  const riskCounts = {high:0, med:0, low:0};
+  const conflictCounts = {1:0,2:0,3:0,4:0,5:0};
+  let maxRiskScore = null;
+  let maxConflict = 1;
+  let policyCount = 0;
+
+  const tagCounts = {};
+  const cCodeCounts = {};
+  const sourceCounts = {};
+  const themeCounts = {};
+  const hdpCounts = {H:0,D:0,P:0};
+
+  for(const it of items24){
+    const r = it.risk || {};
+    if(r.riskLevel==='high') riskCounts.high++;
+    else if(r.riskLevel==='med') riskCounts.med++;
+    else riskCounts.low++;
+
+    const ci = r.conflictIndex || 1;
+    conflictCounts[ci] = (conflictCounts[ci]||0) + 1;
+    if(ci > maxConflict) maxConflict = ci;
+
+    const rs = (r.riskScore ?? null);
+    if(rs!==null && rs!==undefined){
+      maxRiskScore = (maxRiskScore===null) ? rs : Math.max(maxRiskScore, rs);
+    }
+
+    if(r.policyFlag) policyCount++;
+
+    for(const tg of (r.riskTags||[])){
+      tagCounts[tg] = (tagCounts[tg]||0)+1;
+    }
+
+    for(const c of (it.c15||[])){
+      cCodeCounts[c.code] = (cCodeCounts[c.code]||0)+1;
+    }
+
+    if(it.source){
+      for(const s of it.source.split(',').map(x=>x.trim()).filter(Boolean)){
+        sourceCounts[s]=(sourceCounts[s]||0)+1;
+      }
+    }
+    if(it.theme){
+      for(const t of it.theme.split(',').map(x=>x.trim()).filter(Boolean)){
+        themeCounts[t]=(themeCounts[t]||0)+1;
+      }
+    }
+
+    if(it.hdp){
+      if(it.hdp.H==='yes') hdpCounts.H++;
+      if(it.hdp.D==='yes') hdpCounts.D++;
+      if(it.hdp.P==='yes') hdpCounts.P++;
+    }
+  }
+
+  const fmt = (v)=> (v===null || v===undefined) ? '-' : String(Math.round(v*10)/10);
+
+  document.getElementById('detail-title').textContent = country;
+  document.getElementById('detail-sub').textContent =
+    `최근 24개월 문서 ${total}건 · 최근 30일 ${last30}건 · policy 신호 ${policyCount}건`;
+
+  // stats cards
+  const statHTML = `
+    <div class="stat"><div class="k">최근 24개월 문서</div><div class="v">${total}</div></div>
+    <div class="stat"><div class="k">최근 30일 문서</div><div class="v">${last30}</div></div>
+    <div class="stat"><div class="k">max riskScore</div><div class="v">${fmt(maxRiskScore)}</div></div>
+    <div class="stat"><div class="k">max conflictHeat</div><div class="v">${maxConflict}</div></div>
+  `;
+  document.getElementById('detail-stats').innerHTML = statHTML;
+
+  // distributions / signals
+  const topTags = topNFromCounts(tagCounts, 8);
+  const topC    = topNFromCounts(cCodeCounts, 6);
+  const topSrc  = topNFromCounts(sourceCounts, 6);
+
+  const riskLine =
+    `${renderRiskBadge({riskLevel:'high',policyFlag:false})} ${riskCounts.high} · `+
+    `${renderRiskBadge({riskLevel:'med',policyFlag:false})} ${riskCounts.med} · `+
+    `${renderRiskBadge({riskLevel:'low',policyFlag:false})} ${riskCounts.low}`;
+
+  const confLine =
+    `Heat1 ${conflictCounts[1]||0} · Heat2 ${conflictCounts[2]||0} · Heat3 ${conflictCounts[3]||0} · Heat4 ${conflictCounts[4]||0} · Heat5 ${conflictCounts[5]||0}`;
+
+  document.getElementById('detail-signals').innerHTML = `
+    <div style="margin-bottom:6px"><strong>risk 분포</strong>: ${riskLine}</div>
+    <div style="margin-bottom:10px"><strong>conflict 분포</strong>: ${confLine}</div>
+    <div style="margin-bottom:6px"><strong>상위 risk tag</strong></div>
+    <div>${topTags.length ? topTags.map(([k,v])=>`<span class="badge">${escapeHTML(k)}: ${v}</span>`).join(' ') : '<span class="small">—</span>'}</div>
+  `;
+
+  // recent docs (top 10)
+  const recent = items24.slice().sort((a,b)=>{
+    const ta=Date.parse(a.created||''); const tb=Date.parse(b.created||'');
+    return (isNaN(tb)?0:tb) - (isNaN(ta)?0:ta);
+  }).slice(0,10);
+
+  document.getElementById('detail-recent').innerHTML = recent.length ? recent.map(it=>{
+    const meta = [it.source, it.theme].filter(Boolean).join(' · ');
+    const sum  = summarizeText(it.body||'', 2);
+    return `
+      <div class="item">
+        <div style="font-weight:900">${escapeHTML(it.title||'')}</div>
+        <div class="small" style="margin-top:4px;color:#9fb2c8">
+          ${escapeHTML((it.created||'').slice(0,10))} · ${escapeHTML(meta)}
+        </div>
+        <div class="small" style="margin-top:6px">
+          ${renderRiskBadge(it.risk)} ${renderConflictBadge(it.risk?.conflictIndex||1)} ${renderImpactBadge(it.risk?.impactScore||1)}
+          <span style="margin-left:6px">${hbarHTML(it.hdp)}</span>
+          <span style="margin-left:6px">${renderC15Badges(it.c15)}</span>
+        </div>
+        ${sum ? `<div class="small" style="margin-top:8px;color:#cfe0f5">${escapeHTML(sum)}</div>` : ''}
+        ${it.url ? `<div class="small" style="margin-top:8px"><a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">원문 링크</a></div>` : ''}
+      </div>`;
+  }).join('') : `<div class="small">데이터 없음</div>`;
+
+  // top lists
+  const topThemes = topNFromCounts(themeCounts, 6);
+  document.getElementById('detail-top').innerHTML = `
+    <div style="margin-bottom:8px">
+      <strong>HDP hit</strong>:
+      <span class="badge">H: ${hdpCounts.H}</span>
+      <span class="badge">D: ${hdpCounts.D}</span>
+      <span class="badge">P: ${hdpCounts.P}</span>
+    </div>
+    <div style="margin-bottom:8px">
+      <strong>상위 C코드</strong>:
+      ${topC.length ? topC.map(([k,v])=>`<span class="badge">${k}: ${v}</span>`).join(' ') : '<span class="small">—</span>'}
+    </div>
+    <div style="margin-bottom:8px">
+      <strong>상위 Source</strong>:
+      ${topSrc.length ? topSrc.map(([k,v])=>`<span class="badge">${escapeHTML(k)}: ${v}</span>`).join(' ') : '<span class="small">—</span>'}
+    </div>
+    <div>
+      <strong>상위 Theme</strong>:
+      ${topThemes.length ? topThemes.map(([k,v])=>`<span class="badge">${escapeHTML(k)}: ${v}</span>`).join(' ') : '<span class="small">—</span>'}
+    </div>
+  `;
+
+  document.getElementById('detail-modal').style.display='flex';
+}
+
+document.getElementById('detail-close').onclick=()=>{ document.getElementById('detail-modal').style.display='none'; };
+document.getElementById('detail-modal').onclick=(e)=>{ if(e.target.id==='detail-modal') e.currentTarget.style.display='none'; };
+
+/* =========================
+   ReliefWeb fetch
+========================= */
 async function rwFetch(){
   const out=document.getElementById('rw-results');
   const st=document.getElementById('rw-status');
@@ -988,26 +1111,16 @@ async function rwFetch(){
   const sinceMillis = Date.now() - daySpan*86400000;
 
   const iso3ForQuery = pickedISO3.length ? pickedISO3 : RECAP_ISO3;
-
   const url = 'https://api.reliefweb.int/v1/reports?appname=' + encodeURIComponent(APPNAME);
 
   const body = {
-    limit: limit,
-    offset: 0,
-    filter: {
-      operator: 'AND',
-      conditions: [
-        { field: 'country.iso3', value: iso3ForQuery }
-        // date.created 조건은 서버에서 자주 에러/포맷 이슈가 나서 빼고, 클라이언트에서 since 필터링합니다.
-      ]
-    },
-    fields: {
-      include: [
-        'id','title','url','body','body-html',
-        'country','source','theme','disaster_type','date'
-      ]
-    },
-    sort: ['date.created:desc']
+    limit,
+    offset:0,
+    filter:{ operator:'AND', conditions:[ {field:'country.iso3', value: iso3ForQuery} ] },
+    fields:{ include:[
+      'id','title','url','body','body-html','country','source','theme','disaster_type','date'
+    ]},
+    sort:['date.created:desc']
   };
 
   try{
@@ -1020,7 +1133,7 @@ async function rwFetch(){
     if(!res.ok){
       const txt = await res.text().catch(()=>String(res.status));
       st.textContent = '불러오기 실패(' + res.status + ')';
-      out.innerHTML = `<div class="small err">HTTP ${res.status}<br/>${escapeHTML(txt).slice(0,500)}</div>`;
+      out.innerHTML = `<div class="small err">HTTP ${res.status}<br/>${escapeHTML(txt).slice(0,600)}</div>`;
       return;
     }
 
@@ -1040,7 +1153,6 @@ async function rwFetch(){
       const themeStr  = (f.theme  || []).map(t=>t.name).join(', ');
       const typeStr   = (f.disaster_type || []).map(d=>d.name).join(', ');
 
-      // IMPORTANT: created parsing fix
       const created = (f.date && f.date.created) || f['date.created'] || '';
 
       const metaTxt = [
@@ -1057,37 +1169,37 @@ async function rwFetch(){
       const risk = analyzeRiskAndConflict(baseText);
 
       return {
-        id: r.id,
-        title: f.title||'',
-        url: f.url||'',
+        id:r.id,
+        title:f.title||'',
+        url:f.url||'',
         created,
         countriesArr,
-        country: countriesArr.join(', '),
-        source: sourceStr,
-        theme: themeStr,
-        type: typeStr,
-        body: bodyText,
-        hdp, c15, risk
+        country:countriesArr.join(', '),
+        source:sourceStr,
+        theme:themeStr,
+        type:typeStr,
+        body:bodyText,
+        hdp,c15,risk
       };
     });
 
-    // client-side time filter
+    // client-side last N days filter
     currentItems = currentItems.filter(it=>{
-      const t = Date.parse(it.created || '');
-      return isNaN(t) ? true : (t >= sinceMillis);
+      const t=Date.parse(it.created||'');
+      return isNaN(t) ? true : (t>=sinceMillis);
     });
 
     st.textContent = `완료 (${currentItems.length}개)`;
 
-    // refresh dashboard options + render
-    refreshDashCountryOptions();
+    // render dashboard bar (all countries visible)
+    renderDashboardBar();
 
+    // render results table
     if(!currentItems.length){
       out.innerHTML = `<div class="small">조건에 맞는 문서가 없습니다.</div>`;
       return;
     }
 
-    // render results table
     let rows='';
     currentItems.forEach((it,i)=>{
       rows += `
@@ -1115,7 +1227,7 @@ async function rwFetch(){
         <tbody>${rows}</tbody>
       </table>`;
 
-    // title click => modal
+    // title click => summary modal
     out.querySelectorAll('.title-cell').forEach((td,idx)=>{
       td.onclick=()=>{
         const it=currentItems[idx];
@@ -1147,9 +1259,9 @@ async function rwFetch(){
   }
 }
 
-/* =========================================================
-  risk narrative (last 30d)
-========================================================= */
+/* =========================
+   risk narrative (30 days)
+========================= */
 function buildRiskNarrative(){
   if(!currentItems.length){
     alert('먼저 데이터를 가져오세요.');
@@ -1158,7 +1270,7 @@ function buildRiskNarrative(){
   const cutoff = Date.now() - 30*86400000;
   const recent = currentItems.filter(it=>{
     const t=Date.parse(it.created||'');
-    return isNaN(t) ? false : (t>=cutoff);
+    return !isNaN(t) && t>=cutoff;
   });
 
   const lines=[];
@@ -1169,38 +1281,36 @@ function buildRiskNarrative(){
   lines.push(`● high risk: ${high}건 · medium risk: ${med}건`);
 
   const c4 = recent.filter(it=>(it.risk?.conflictIndex||1)>=4).length;
-  if(c4>0) lines.push(`● conflict heat 4 이상 문서: ${c4}건 → 무력 충돌/폭력 신호가 일부 지역에서 강화.`);
+  if(c4>0) lines.push(`● conflict heat 4 이상 문서: ${c4}건 → 무력 충돌/폭력 신호 강화 가능.`);
 
   const byCountry = {};
   for(const it of recent){
     for(const c of (it.countriesArr||[])){
-      byCountry[c]=byCountry[c]||{high:0, total:0};
+      byCountry[c]=byCountry[c]||{high:0,total:0};
       byCountry[c].total++;
       if(it.risk?.riskLevel==='high') byCountry[c].high++;
     }
   }
   const top = Object.entries(byCountry).sort((a,b)=>b[1].high-a[1].high).slice(0,5)
     .filter(x=>x[1].high>0);
-  if(top.length){
-    lines.push(`● 최근 high risk 상위 국가: ` + top.map(([c,v])=>`${c}(${v.high}/${v.total})`).join(', '));
-  }
+  if(top.length) lines.push(`● 최근 high risk 상위 국가: ` + top.map(([c,v])=>`${c}(${v.high}/${v.total})`).join(', '));
 
   const access = recent.filter(it=>it.risk?.riskTags?.some(t=>t.startsWith('access'))).length;
   if(access>0) lines.push(`● 접근 제약(access) 신호: ${access}건 → 현장사업/모니터링 지연 리스크.`);
 
   const policy = recent.filter(it=>it.risk?.policyFlag).length;
-  if(policy>0) lines.push(`● 정책/규제 변화(policy) 신호: ${policy}건 → 인허가/입국/계약 등 제도 리스크 점검 필요.`);
+  if(policy>0) lines.push(`● 정책/규제 변화(policy) 신호: ${policy}건 → 제도 리스크 점검 필요.`);
 
-  lines.push(`● 해석: 이 결과는 “문서 텍스트 신호” 기반이며, 실제 사건/통계와 불일치할 수 있으므로 교차확인이 필요.`);
+  lines.push(`● 해석: “문서 텍스트 신호” 기반이므로, 사건 데이터와 교차확인이 필요.`);
 
   const box=document.getElementById('risk-narrative-box');
   box.textContent = lines.join('\n');
   box.style.display='block';
 }
 
-/* =========================================================
-  notes save
-========================================================= */
+/* =========================
+   notes save
+========================= */
 document.getElementById('rw-to-notes').onclick=function(){
   const checks = Array.from(document.querySelectorAll('.rw-check')).filter(cb=>cb.checked);
   if(!checks.length){ alert('저장할 항목을 선택하세요.'); return; }
@@ -1215,7 +1325,10 @@ document.getElementById('rw-to-notes').onclick=function(){
     const it=currentItems[idx];
     if(!it) continue;
 
-    const summary = summarizeText(it.body||'', 3) || summarizeText([it.title,it.country,it.source].join(' | '), 3) || it.title;
+    const summary = summarizeText(it.body||'', 3)
+      || summarizeText([it.title,it.country,it.source].join(' | '), 3)
+      || it.title;
+
     const id = 'rw-' + it.id;
     if(db.notes.some(n=>n.id===id)) continue;
 
@@ -1240,28 +1353,30 @@ document.getElementById('rw-to-notes').onclick=function(){
   document.getElementById('rw-status').textContent = `${added}개 노트 저장 완료`;
 };
 
-/* =========================================================
-  modal handlers
-========================================================= */
+/* =========================
+   modal handlers
+========================= */
 document.getElementById('summary-close').onclick=()=>{ document.getElementById('summary-modal').style.display='none'; };
 document.getElementById('summary-modal').onclick=(e)=>{ if(e.target.id==='summary-modal') e.currentTarget.style.display='none'; };
+
 window.addEventListener('keydown', (e)=>{
   if(e.key==='Escape'){
     document.getElementById('summary-modal').style.display='none';
     document.getElementById('country-modal').style.display='none';
+    document.getElementById('detail-modal').style.display='none';
   }
 });
 
-/* =========================================================
-  bindings
-========================================================= */
+/* =========================
+   bindings
+========================= */
 document.getElementById('rw-fetch').addEventListener('click', rwFetch);
 document.getElementById('btn-risk-narrative').addEventListener('click', buildRiskNarrative);
 
-document.getElementById('dash-recalc').addEventListener('click', updateDash);
-document.getElementById('dash-country').addEventListener('change', updateDash);
-document.getElementById('dash-metric').addEventListener('change', updateDash);
-document.getElementById('dash-agg').addEventListener('change', updateDash);
+document.getElementById('dash-refresh').addEventListener('click', renderDashboardBar);
+document.getElementById('dash-metric').addEventListener('change', renderDashboardBar);
+document.getElementById('dash-agg').addEventListener('change', renderDashboardBar);
+document.getElementById('dash-sort').addEventListener('change', renderDashboardBar);
 
 document.getElementById('notes-refresh').onclick=()=>renderNotes(document.getElementById('notes-q').value);
 document.getElementById('notes-clear').onclick=()=>{
@@ -1271,10 +1386,12 @@ document.getElementById('notes-clear').onclick=()=>{
 };
 document.getElementById('notes-q').addEventListener('input', (e)=>renderNotes(e.target.value));
 
-/* initial */
+/* =========================
+   initial
+========================= */
 migrateNotesIfNeeded();
 renderNotes('');
-refreshDashCountryOptions();
+renderDashboardBar(); // 데이터 없으면 빈 차트(클릭 불가)
 </script>
 </body>
 </html>
