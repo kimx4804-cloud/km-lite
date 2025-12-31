@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>km-lite v2.6 — reliefweb + acled · dashboard-first</title>
+<title>km-lite v2.6 — ReliefWeb + ACLED · Dashboard</title>
 
-<!-- leaflet (지도) -->
+<!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
@@ -35,15 +35,16 @@
 html,body{height:100%}
 body{
   margin:0;
-  padding:18px;
+  padding:16px;
   background:var(--bg);
   color:var(--fg);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial, sans-serif;
   letter-spacing:.1px;
+  font-size:13px;
 }
 
 .container{max-width:1280px;margin:0 auto}
-h1{font-size:18px;margin:0 0 10px;font-weight:950}
+h1{font-size:15px;margin:0 0 10px;font-weight:700}
 .small{font-size:12px;color:var(--mut);line-height:1.5}
 .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
 a{color:#9bd0ff;text-decoration:none}
@@ -54,15 +55,14 @@ input, button, select, textarea{
   color:var(--fg);
   border:1px solid var(--line);
   border-radius:10px;
-  padding:.50rem .62rem;
+  padding:.46rem .58rem;
   font-size:13px;
   outline:none;
 }
 button{cursor:pointer}
 button:hover{border-color:var(--line2)}
 textarea{width:100%}
-
-hr{border:none;border-top:1px solid var(--line); margin:14px 0}
+hr{border:none;border-top:1px solid var(--line); margin:12px 0}
 
 .card{
   border:1px solid var(--line);
@@ -92,7 +92,7 @@ hr{border:none;border-top:1px solid var(--line); margin:14px 0}
 }
 
 .section-title{
-  font-weight:950;
+  font-weight:650;
   font-size:12px;
   margin:0 0 8px;
   color:#dfeaff;
@@ -113,7 +113,7 @@ hr{border:none;border-top:1px solid var(--line); margin:14px 0}
   padding:12px;
 }
 .kpi .k{font-size:11px;color:var(--mut);display:flex;gap:8px;align-items:center}
-.kpi .v{font-size:22px;font-weight:950;margin-top:8px}
+.kpi .v{font-size:18px;font-weight:700;margin-top:8px}
 .kpi .s{font-size:11px;color:#9fb2c8;margin-top:6px;line-height:1.35}
 .kpi .mini{
   height:8px;border-radius:999px;
@@ -124,7 +124,7 @@ hr{border:none;border-top:1px solid var(--line); margin:14px 0}
 .kpi .mini > div{
   height:100%;
   width:0%;
-  background: linear-gradient(90deg, rgba(58,163,255,.85), rgba(97,214,97,.80));
+  background: linear-gradient(90deg, rgba(58,163,255,.80), rgba(97,214,97,.75));
 }
 .kpi.clickable{cursor:pointer}
 .kpi.clickable:hover{border-color:var(--line2); transform: translateY(-1px); transition: transform .08s ease}
@@ -136,22 +136,18 @@ hr{border:none;border-top:1px solid var(--line); margin:14px 0}
   gap:12px;
   align-items:start;
 }
-@media (max-width:1120px){
-  .main-grid{grid-template-columns:1fr; }
-}
+@media (max-width:1120px){ .main-grid{grid-template-columns:1fr;} }
 
 /* map */
 #map{
-  height:72vh;
+  height:74vh; /* taller */
   width:100%;
   border-radius:16px;
   border:1px solid var(--line);
   overflow:hidden;
   background:#0c121a;
 }
-@media (max-width:860px){
-  #map{height:64vh;}
-}
+@media (max-width:860px){ #map{height:66vh;} }
 
 /* list */
 table{border-collapse:collapse;width:100%;font-size:13px}
@@ -166,7 +162,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
   padding:2px 7px;
   border-radius:8px;
   font-size:11px;
-  font-weight:900;
+  font-weight:700;
   margin-right:4px;
   color:#000;
 }
@@ -175,26 +171,17 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
 .hdp-D{ background:var(--d); }
 .hdp-P{ background:var(--p); }
 
-.risk-badge{
+.risk-badge, .conf-badge{
   display:inline-block;
   padding:2px 8px;
   border-radius:999px;
   font-size:11px;
-  font-weight:950;
+  font-weight:750;
   color:#000;
 }
 .risk-low{background:var(--low)}
 .risk-med{background:var(--med)}
 .risk-high{background:var(--high)}
-
-.conf-badge{
-  display:inline-block;
-  padding:2px 8px;
-  border-radius:999px;
-  font-size:11px;
-  font-weight:950;
-  color:#000;
-}
 .conf-low{background:var(--low)}
 .conf-med{background:var(--med)}
 .conf-high{background:var(--high)}
@@ -235,7 +222,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
   padding:16px;
   box-shadow:0 0 22px rgba(0,0,0,.55);
 }
-.modal h3{margin:0 0 8px;font-size:16px;font-weight:950}
+.modal h3{margin:0 0 8px;font-size:15px;font-weight:700}
 .modal .meta{margin:0 0 10px;color:var(--mut);font-size:12px}
 pre.wrap{white-space:pre-wrap;margin:0;font-size:13px;line-height:1.6;color:#dce8f7}
 </style>
@@ -243,130 +230,115 @@ pre.wrap{white-space:pre-wrap;margin:0;font-size:13px;line-height:1.6;color:#dce
 
 <body>
 <div class="container">
-  <h1>recap km-lite v2.6 (dashboard-first)</h1>
-  <div class="small">
-    · 정량 사용자 제공자료가 필요한 indicator는 제거됨. 남는 지표는 <b>risk</b>, <b>conflict heat</b>, <b>hdp(binary)</b>, <b>c1~c15</b>, <b>items(문서/이벤트)</b> 중심.<br/>
-    · 지도/리스트는 <b>동일 필터(country/partner)</b>를 공유합니다.
-  </div>
+  <h1>recap km-lite v2.6</h1>
 
-  <hr/>
-
-  <!-- Controls -->
   <div class="card">
     <div class="spread">
       <div class="row">
-        <span class="pill">data</span>
-        <select id="src-mode" title="데이터 소스">
-          <option value="reliefweb">reliefweb reports</option>
-          <option value="acled">acled events (requires key)</option>
-          <option value="both">both</option>
+        <span class="pill">Data</span>
+        <select id="src-mode" title="Data Source">
+          <option value="reliefweb">ReliefWeb Reports</option>
+          <option value="acled">ACLED Events (Key Required)</option>
+          <option value="both">Both</option>
         </select>
 
-        <span class="pill">window</span>
-        <label class="small">최근 일수</label>
-        <input id="days" type="number" value="365" style="width:92px"/>
+        <span class="pill">Window</span>
+        <label class="small">Recent Days</label>
+        <input id="days" type="number" value="3650" style="width:98px" title="Default: 10 Years"/>
 
-        <label class="small">최대 개수</label>
-        <input id="limit" type="number" value="300" style="width:92px"/>
+        <span class="badge" id="limit-chip" title="Maximum Items (Fixed)">Max</span>
 
-        <button id="btn-country">국가(수집대상) 선택</button>
-        <span id="country-chip" class="badge">전체 20개국</span>
+        <button id="btn-country" title="Collection Target Countries">Country Set</button>
+        <span id="country-chip" class="badge">All 20</span>
 
-        <span class="pill">filters</span>
-        <label class="small">country</label>
-        <select id="filter-country" style="min-width:200px">
-          <option value="">all</option>
+        <span class="pill">Filters</span>
+        <label class="small">Country</label>
+        <select id="filter-country" style="min-width:210px">
+          <option value="">All</option>
         </select>
 
-        <label class="small">partner</label>
+        <label class="small">Partner</label>
         <select id="filter-partner" style="min-width:220px">
-          <option value="">all</option>
+          <option value="">All</option>
         </select>
 
-        <button id="btn-clear-filters" title="country/partner 필터 해제">필터 해제</button>
+        <button id="btn-clear-filters" title="Clear Filters">Clear</button>
       </div>
 
       <div class="row">
-        <button id="fetch">가져오기</button>
+        <button id="fetch">Fetch</button>
         <span id="status" class="small"></span>
       </div>
     </div>
 
     <div id="acled-key-row" class="row" style="margin-top:10px; display:none;">
-      <span class="pill">acled</span>
-      <label class="small">api key</label>
+      <span class="pill">ACLED</span>
+      <label class="small">Api Key</label>
       <input id="acled-key" placeholder="ACLED_API_KEY" style="min-width:240px; flex:1"/>
-      <label class="small">email</label>
+      <label class="small">Email</label>
       <input id="acled-email" placeholder="you@example.com" style="min-width:220px; flex:1"/>
-      <span class="small">· acled은 개인키가 있어야 호출됩니다(없으면 스킵).</span>
     </div>
   </div>
 
   <hr/>
 
-  <!-- Dashboard -->
   <div class="card">
     <div class="spread" style="margin-bottom:8px;">
-      <div class="section-title">dashboard (filters applied)</div>
+      <div class="section-title">Dashboard</div>
       <div class="row">
-        <span class="badge" id="dash-scope">scope: —</span>
-        <span class="badge" id="dash-window">window: —</span>
+        <span class="badge" id="dash-scope">Scope: —</span>
+        <span class="badge" id="dash-window">Window: —</span>
       </div>
     </div>
 
     <div class="kpi-grid">
-      <!-- 12-col grid; each tile spans cols -->
       <div class="kpi" style="grid-column: span 3;">
-        <div class="k">items</div>
+        <div class="k">Items</div>
         <div class="v" id="kpi-items">—</div>
-        <div class="s" id="kpi-items-s">reports + events</div>
+        <div class="s">Reports + Events</div>
       </div>
 
       <div class="kpi" style="grid-column: span 3;">
-        <div class="k">reliefweb reports</div>
+        <div class="k">ReliefWeb Reports</div>
         <div class="v" id="kpi-reports">—</div>
-        <div class="s" id="kpi-reports-s">documents</div>
       </div>
 
       <div class="kpi" style="grid-column: span 3;">
-        <div class="k">acled events</div>
+        <div class="k">ACLED Events</div>
         <div class="v" id="kpi-events">—</div>
-        <div class="s" id="kpi-events-s">points on map</div>
       </div>
 
-      <div class="kpi clickable" id="kpi-high-tile" style="grid-column: span 3;" title="high risk만 필터">
-        <div class="k">high risk</div>
+      <div class="kpi clickable" id="kpi-high-tile" style="grid-column: span 3;" title="Toggle High Risk Filter">
+        <div class="k">High Risk</div>
         <div class="v" id="kpi-high">—</div>
-        <div class="s">click to show only high risk in list</div>
         <div class="mini"><div id="kpi-high-bar"></div></div>
       </div>
 
-      <div class="kpi clickable" id="kpi-c4-tile" style="grid-column: span 4;" title="conflict heat≥4만 필터">
-        <div class="k">conflict heat ≥ 4</div>
+      <div class="kpi clickable" id="kpi-c4-tile" style="grid-column: span 4;" title="Toggle Heat ≥ 4 Filter">
+        <div class="k">Conflict Heat ≥ 4</div>
         <div class="v" id="kpi-c4">—</div>
-        <div class="s">click to show only heat≥4 in list</div>
         <div class="mini"><div id="kpi-c4-bar"></div></div>
       </div>
 
       <div class="kpi" style="grid-column: span 4;">
-        <div class="k">hdp signals (binary)</div>
+        <div class="k">HDP Signals</div>
         <div class="v" id="kpi-hdp">—</div>
-        <div class="s">share of items tagged H / D / P (text-based)</div>
+        <div class="s">Share Of Items Tagged H / D / P</div>
       </div>
 
       <div class="kpi" style="grid-column: span 4;">
-        <div class="k">top c-codes (c1~c15)</div>
+        <div class="k">Top C-Codes</div>
         <div class="v" id="kpi-codes">—</div>
-        <div class="s" id="kpi-codes-s">top 3 by count (filtered)</div>
+        <div class="s" id="kpi-codes-s">Top 3</div>
       </div>
 
       <div class="kpi" style="grid-column: span 12;">
         <div class="legend">
-          <span class="small"><b>risk</b></span>
-          <span class="small"><span class="dot" style="background:var(--low)"></span>low</span>
-          <span class="small"><span class="dot" style="background:var(--med)"></span>med</span>
-          <span class="small"><span class="dot" style="background:var(--high)"></span>high</span>
-          <span class="small" style="margin-left:12px"><b>conflict heat</b></span>
+          <span class="small"><b>Risk</b></span>
+          <span class="small"><span class="dot" style="background:var(--low)"></span>Low</span>
+          <span class="small"><span class="dot" style="background:var(--med)"></span>Med</span>
+          <span class="small"><span class="dot" style="background:var(--high)"></span>High</span>
+          <span class="small" style="margin-left:12px"><b>Conflict</b></span>
           <span class="small"><span class="dot" style="background:var(--low)"></span>1–2</span>
           <span class="small"><span class="dot" style="background:var(--med)"></span>3–4</span>
           <span class="small"><span class="dot" style="background:var(--high)"></span>5</span>
@@ -381,69 +353,62 @@ pre.wrap{white-space:pre-wrap;margin:0;font-size:13px;line-height:1.6;color:#dce
 
   <hr/>
 
-  <!-- Map + Side panel -->
   <div class="main-grid">
     <div class="card">
       <div class="spread" style="margin-bottom:8px;">
-        <div class="section-title">map</div>
+        <div class="section-title">Map</div>
         <div class="row">
-          <select id="map-layer" title="지도 레이어">
-            <option value="auto">auto</option>
-            <option value="country">country aggregates</option>
-            <option value="acled">acled points</option>
-            <option value="both">both</option>
+          <select id="map-layer" title="Map Layer">
+            <option value="auto">Auto</option>
+            <option value="country">Country Aggregates</option>
+            <option value="acled">ACLED Points</option>
+            <option value="both">Both</option>
           </select>
-          <select id="map-metric" title="국가 집계용 지표">
-            <option value="conflictIndex">country aggregate: conflict heat</option>
-            <option value="riskScore">country aggregate: risk score</option>
+          <select id="map-metric" title="Country Metric">
+            <option value="conflictIndex">Country: Conflict Heat</option>
+            <option value="riskScore">Country: Risk Score</option>
           </select>
-          <select id="map-agg" title="집계 방식">
-            <option value="max">max</option>
-            <option value="mean">mean</option>
+          <select id="map-agg" title="Aggregation">
+            <option value="max">Max</option>
+            <option value="mean">Mean</option>
           </select>
-          <button id="map-refresh">지도 갱신</button>
+          <button id="map-refresh">Refresh</button>
         </div>
-      </div>
-      <div class="small" style="margin-bottom:10px">
-        · 국가 집계는 “최근 24개월(730일)” 윈도우 기준 · ACLED는 이벤트 좌표 점 표시(사망자수 기반).
       </div>
       <div id="map"></div>
     </div>
 
     <div class="card">
-      <div class="section-title">quick insights</div>
-      <div class="small" style="margin-bottom:10px">필터 적용된 데이터 기준 상위 항목을 요약합니다.</div>
+      <div class="section-title">Insights</div>
 
       <div class="kpi" style="margin-bottom:10px">
-        <div class="k">top countries (by items)</div>
+        <div class="k">Top Countries</div>
         <div class="v" id="side-countries">—</div>
-        <div class="s" id="side-countries-s">top 5</div>
+        <div class="s">Top 5</div>
       </div>
 
       <div class="kpi" style="margin-bottom:10px">
-        <div class="k">top partners (by mentions in source)</div>
+        <div class="k">Top Partners</div>
         <div class="v" id="side-partners">—</div>
-        <div class="s" id="side-partners-s">top 5 (reports only)</div>
+        <div class="s">Top 5 (Reports Only)</div>
       </div>
 
       <div class="kpi">
-        <div class="k">recentness</div>
+        <div class="k">Latest Date</div>
         <div class="v" id="side-recent">—</div>
-        <div class="s" id="side-recent-s">latest date in filtered items</div>
       </div>
     </div>
   </div>
 
   <hr/>
 
-  <!-- Items list -->
   <div class="card">
-    <div class="section-title">items (click title → summary)</div>
-    <div id="results" class="small">가져오기를 실행하세요.</div>
+    <div class="section-title">Items</div>
+    <div id="results" class="small">Fetch를 실행하세요.</div>
   </div>
 </div>
 
-<!-- Summary modal -->
+<!-- Summary Modal -->
 <div id="modal" class="modal">
   <div>
     <div class="spread">
@@ -451,35 +416,41 @@ pre.wrap{white-space:pre-wrap;margin:0;font-size:13px;line-height:1.6;color:#dce
         <h3 id="m-title"></h3>
         <div id="m-meta" class="meta"></div>
       </div>
-      <button id="m-close">닫기</button>
+      <button id="m-close">Close</button>
     </div>
     <div id="m-badges" style="margin:10px 0"></div>
     <pre id="m-sum" class="wrap"></pre>
     <div style="margin-top:12px">
-      <a id="m-link" href="#" target="_blank" rel="noopener">원문 보기</a>
+      <a id="m-link" href="#" target="_blank" rel="noopener">Open Source</a>
     </div>
   </div>
 </div>
 
-<!-- Country (collection target) modal -->
+<!-- Country Set Modal -->
 <div id="country-modal" class="modal">
   <div>
     <div class="spread">
       <div>
-        <h3>국가(수집대상) 선택</h3>
-        <div class="small">체크 후 적용 (가져오기 요청에 반영)</div>
+        <h3>Country Set</h3>
+        <div class="small">체크 후 적용</div>
       </div>
-      <button id="c-close">닫기</button>
+      <button id="c-close">Close</button>
     </div>
     <div id="c-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:10px"></div>
     <div class="row" style="justify-content:flex-end;margin-top:12px">
-      <button id="c-clear">초기화</button>
-      <button id="c-apply">적용</button>
+      <button id="c-clear">Reset</button>
+      <button id="c-apply">Apply</button>
     </div>
   </div>
 </div>
 
 <script>
+/* =============================
+   Config
+============================= */
+const APPNAME = "HyunKim+recap_km_lite+a5Ttg7U8";
+const MAX_ITEMS = 1500; // "Max" (safety cap for browser & API)
+
 /* =============================
    Utils
 ============================= */
@@ -495,10 +466,8 @@ function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
 function clamp(x,a,b){ return Math.max(a, Math.min(b, x)); }
 
 /* =============================
-   Constants & Countries
+   Countries
 ============================= */
-const APPNAME = "HyunKim+recap_km_lite+a5Ttg7U8"; // ReliefWeb appname
-
 const RECAP_NAMES = [
   'Burundi','Central African Republic','Comoros','Guinea','Kenya','Mali',
   'Sao Tome and Principe','Somalia','South Sudan','Zimbabwe',
@@ -524,13 +493,13 @@ const COUNTRY_CENTROIDS = {
 };
 
 let pickedISO3 = [];
-let currentItems = [];         // all fetched (reports + events)
-let selectedISO3 = "";         // filter: country
-let selectedPartner = "";      // filter: partner
-let listSpecialMode = "";      // "", "high", "c4"  (dashboard quick filters)
+let currentItems = [];
+let selectedISO3 = "";
+let selectedPartner = "";
+let listSpecialMode = "";
 
 /* =============================
-   Indicators: HDP binary
+   Indicators: HDP
 ============================= */
 const HDP_DICT = {
   H:['emergency','relief','response','humanitarian','displacement','refugee','cholera','outbreak','famine','flood','earthquake','evacuation','cash assistance','wash cluster','rapid'],
@@ -554,7 +523,7 @@ function hbarHTML(score){
 }
 
 /* =============================
-   Summarization (TF-IDF)
+   Summarization
 ============================= */
 function summarizeText(text,maxSentences){
   maxSentences = maxSentences || 5;
@@ -700,9 +669,9 @@ function analyzeRiskAndConflict(text){
 
 function renderRiskBadge(r){
   if(!r) return '';
-  const txt = r.riskLevel === 'high' ? 'high' : r.riskLevel === 'med' ? 'med' : 'low';
+  const txt = r.riskLevel === 'high' ? 'High' : r.riskLevel === 'med' ? 'Med' : 'Low';
   const cls = r.riskLevel === 'high' ? 'risk-high' : r.riskLevel === 'med' ? 'risk-med' : 'risk-low';
-  const policy = r.policyFlag ? `<span class="policy-flag">policy</span>` : '';
+  const policy = r.policyFlag ? `<span class="policy-flag">Policy</span>` : '';
   return `<span class="risk-badge ${cls}">${txt}</span>${policy}`;
 }
 function renderConflictBadge(idx){
@@ -711,11 +680,11 @@ function renderConflictBadge(idx){
   if(idx<=2) cls='conf-low';
   else if(idx<=4) cls='conf-med';
   else cls='conf-high';
-  return `<span class="conf-badge ${cls}">heat ${idx}</span>`;
+  return `<span class="conf-badge ${cls}">Heat ${idx}</span>`;
 }
 
 /* =============================
-  c1~c15 classification
+  c1~c15
 ============================= */
 const CODES = {
   C1:{name:'사업·프로젝트 개요 & 배경',core:['background','project overview','context analysis','needs assessment','맥락','배경'],related:['objective','goal','목표'],ref:['overview']},
@@ -766,49 +735,6 @@ function renderC15Badges(arr){
 }
 
 /* =============================
-   UI: collection target country modal
-============================= */
-const countryModal = document.getElementById('country-modal');
-document.getElementById('btn-country').onclick = () => {
-  const grid = document.getElementById('c-grid');
-  grid.innerHTML = RECAP_MAP.map(d=>{
-    const checked = pickedISO3.includes(d.iso3) ? 'checked' : '';
-    return `
-      <label style="display:flex;gap:8px;align-items:center;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:10px;background:rgba(15,22,32,.25)">
-        <input type="checkbox" value="${d.iso3}" ${checked}>
-        <span>${escapeHTML(d.name)} <span class="badge">${escapeHTML(d.iso3)}</span></span>
-      </label>`;
-  }).join('');
-  countryModal.style.display='flex';
-};
-document.getElementById('c-close').onclick = ()=> countryModal.style.display='none';
-document.getElementById('c-clear').onclick = ()=>{
-  pickedISO3 = [];
-  document.getElementById('country-chip').textContent = '전체 20개국';
-  countryModal.style.display='none';
-};
-document.getElementById('c-apply').onclick = ()=>{
-  const boxes = document.querySelectorAll('#c-grid input:checked');
-  pickedISO3 = Array.from(boxes).map(b=>b.value);
-  document.getElementById('country-chip').textContent = pickedISO3.length ? (pickedISO3.length+'개국 선택') : '전체 20개국';
-  countryModal.style.display='none';
-};
-countryModal.onclick = (e)=>{ if(e.target.id==='country-modal') countryModal.style.display='none'; };
-
-/* =============================
-   Modal: summary
-============================= */
-const modal = document.getElementById('modal');
-document.getElementById('m-close').onclick = ()=> modal.style.display='none';
-modal.onclick = (e)=>{ if(e.target.id==='modal') modal.style.display='none'; };
-window.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){
-    modal.style.display='none';
-    countryModal.style.display='none';
-  }
-});
-
-/* =============================
    Source UI
 ============================= */
 const srcModeEl = document.getElementById('src-mode');
@@ -823,69 +749,31 @@ syncSourceUI();
 /* =============================
    Filters
 ============================= */
-function iso3ForQuery(){
-  return pickedISO3.length ? pickedISO3 : RECAP_ISO3;
-}
-function setCountryFilter(iso3){
-  selectedISO3 = iso3 || "";
-  document.getElementById('filter-country').value = selectedISO3;
-  applyFiltersAndRender();
-}
-function setPartnerFilter(p){
-  selectedPartner = p || "";
-  document.getElementById('filter-partner').value = selectedPartner;
-  applyFiltersAndRender();
-}
-document.getElementById('filter-country').onchange = (e)=>{
-  selectedISO3 = e.target.value || "";
-  applyFiltersAndRender();
-};
-document.getElementById('filter-partner').onchange = (e)=>{
-  selectedPartner = e.target.value || "";
-  applyFiltersAndRender();
-};
-document.getElementById('btn-clear-filters').onclick = ()=>{
-  selectedISO3 = "";
-  selectedPartner = "";
-  listSpecialMode = "";
-  document.getElementById('filter-country').value = "";
-  document.getElementById('filter-partner').value = "";
-  applyFiltersAndRender();
-};
-
-/* quick filters from KPI tiles */
-document.getElementById('kpi-high-tile').onclick = ()=>{
-  listSpecialMode = (listSpecialMode==='high') ? '' : 'high';
-  applyFiltersAndRender();
-};
-document.getElementById('kpi-c4-tile').onclick = ()=>{
-  listSpecialMode = (listSpecialMode==='c4') ? '' : 'c4';
-  applyFiltersAndRender();
-};
-
+function iso3ForQuery(){ return pickedISO3.length ? pickedISO3 : RECAP_ISO3; }
 function itemMatchesPartner(it, partner){
   if(!partner) return true;
   const s = (it.source||'').toLowerCase();
   const p = partner.toLowerCase();
   return s.includes(p);
 }
-
 function applyFilters(items){
   let out = (items||[]).slice();
-
-  if(selectedISO3){
-    out = out.filter(it => String(it.iso3||'') === String(selectedISO3));
-  }
-  if(selectedPartner){
-    out = out.filter(it => it.sourceType !== 'acled' && itemMatchesPartner(it, selectedPartner));
-  }
-  if(listSpecialMode==='high'){
-    out = out.filter(it => it.risk && it.risk.riskLevel==='high');
-  }else if(listSpecialMode==='c4'){
-    out = out.filter(it => (it.conflictIndex||0) >= 4);
-  }
+  if(selectedISO3) out = out.filter(it => String(it.iso3||'') === String(selectedISO3));
+  if(selectedPartner) out = out.filter(it => it.sourceType !== 'acled' && itemMatchesPartner(it, selectedPartner));
+  if(listSpecialMode==='high') out = out.filter(it => it.risk && it.risk.riskLevel==='high');
+  else if(listSpecialMode==='c4') out = out.filter(it => (it.conflictIndex||0) >= 4);
   return out;
 }
+document.getElementById('filter-country').onchange = (e)=>{ selectedISO3 = e.target.value||""; applyFiltersAndRender(); };
+document.getElementById('filter-partner').onchange = (e)=>{ selectedPartner = e.target.value||""; applyFiltersAndRender(); };
+document.getElementById('btn-clear-filters').onclick = ()=>{
+  selectedISO3=""; selectedPartner=""; listSpecialMode="";
+  document.getElementById('filter-country').value="";
+  document.getElementById('filter-partner').value="";
+  applyFiltersAndRender();
+};
+document.getElementById('kpi-high-tile').onclick = ()=>{ listSpecialMode = (listSpecialMode==='high')?'':'high'; applyFiltersAndRender(); };
+document.getElementById('kpi-c4-tile').onclick   = ()=>{ listSpecialMode = (listSpecialMode==='c4')?'':'c4'; applyFiltersAndRender(); };
 
 /* =============================
    Partner dropdown
@@ -910,18 +798,61 @@ function renderPartnerDropdown(items){
   const sel = document.getElementById('filter-partner');
   const opts = buildPartnerOptions(items);
   const current = selectedPartner || "";
-  sel.innerHTML = `<option value="">all</option>` + opts.map(p=>`<option value="${escapeAttr(p)}">${escapeHTML(p)}</option>`).join('');
+  sel.innerHTML = `<option value="">All</option>` + opts.map(p=>`<option value="${escapeAttr(p)}">${escapeHTML(p)}</option>`).join('');
   sel.value = current;
 }
 function renderCountryDropdown(){
   const sel = document.getElementById('filter-country');
   const current = selectedISO3 || "";
   sel.innerHTML =
-    `<option value="">all</option>` +
+    `<option value="">All</option>` +
     RECAP_MAP.map(d=>`<option value="${escapeAttr(d.iso3)}">${escapeHTML(d.name)} (${escapeHTML(d.iso3)})</option>`).join('');
   sel.value = current;
 }
 renderCountryDropdown();
+
+/* =============================
+   Country set modal
+============================= */
+const countryModal = document.getElementById('country-modal');
+document.getElementById('btn-country').onclick = () => {
+  const grid = document.getElementById('c-grid');
+  grid.innerHTML = RECAP_MAP.map(d=>{
+    const checked = pickedISO3.includes(d.iso3) ? 'checked' : '';
+    return `
+      <label style="display:flex;gap:8px;align-items:center;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:10px;background:rgba(15,22,32,.25)">
+        <input type="checkbox" value="${d.iso3}" ${checked}>
+        <span>${escapeHTML(d.name)} <span class="badge">${escapeHTML(d.iso3)}</span></span>
+      </label>`;
+  }).join('');
+  countryModal.style.display='flex';
+};
+document.getElementById('c-close').onclick = ()=> countryModal.style.display='none';
+document.getElementById('c-clear').onclick = ()=>{
+  pickedISO3 = [];
+  document.getElementById('country-chip').textContent = 'All 20';
+  countryModal.style.display='none';
+};
+document.getElementById('c-apply').onclick = ()=>{
+  const boxes = document.querySelectorAll('#c-grid input:checked');
+  pickedISO3 = Array.from(boxes).map(b=>b.value);
+  document.getElementById('country-chip').textContent = pickedISO3.length ? ('Selected '+pickedISO3.length) : 'All 20';
+  countryModal.style.display='none';
+};
+countryModal.onclick = (e)=>{ if(e.target.id==='country-modal') countryModal.style.display='none'; };
+
+/* =============================
+   Summary modal
+============================= */
+const modal = document.getElementById('modal');
+document.getElementById('m-close').onclick = ()=> modal.style.display='none';
+modal.onclick = (e)=>{ if(e.target.id==='modal') modal.style.display='none'; };
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    modal.style.display='none';
+    countryModal.style.display='none';
+  }
+});
 
 /* =============================
    Map (Leaflet)
@@ -947,7 +878,7 @@ function aggregateByCountry(items, metric, agg){
   const buckets = {};
   items.forEach(it=>{
     if(!it.iso3) return;
-    if(it.sourceType==='acled') return; // 국가 집계는 report 기준
+    if(it.sourceType==='acled') return;
     const v = (metric==='conflictIndex') ? it.conflictIndex : it.riskScore;
     if(v==null || !isFinite(v)) return;
     if(!buckets[it.iso3]) buckets[it.iso3]=[];
@@ -985,12 +916,17 @@ function acledStyleFromFatalities(f){
   return {radius, color};
 }
 
+function setCountryFilter(iso3){
+  selectedISO3 = iso3 || "";
+  document.getElementById('filter-country').value = selectedISO3;
+  applyFiltersAndRender();
+}
+
 function renderMap(){
   countryLayer.clearLayers();
   acledLayer.clearLayers();
   if(!currentItems.length) return;
 
-  // map uses filtered set (same as list) for coherence
   const filtered = applyFilters(currentItems);
 
   const mode = document.getElementById('src-mode').value;
@@ -1009,7 +945,7 @@ function renderMap(){
       const radius = 10 + clamp(r.n, 0, 40) * 0.45;
       const name = (RECAP_MAP.find(x=>x.iso3===r.iso3)||{}).name || r.iso3;
       const vtxt = (r.value==null) ? '—' : (Math.round(r.value*10)/10);
-      const label = metric==='conflictIndex' ? 'heat' : 'risk';
+      const label = metric==='conflictIndex' ? 'Heat' : 'Risk';
 
       const circle = L.circleMarker(ll,{
         radius, color, weight:2, fillColor:color, fillOpacity:.35
@@ -1017,10 +953,9 @@ function renderMap(){
 
       circle.bindPopup(`
         <div style="font-family:system-ui; font-size:13px;">
-          <div style="font-weight:900;margin-bottom:6px;">${escapeHTML(name)} <span style="opacity:.8">(${escapeHTML(r.iso3)})</span></div>
+          <div style="font-weight:700;margin-bottom:6px;">${escapeHTML(name)} <span style="opacity:.8">(${escapeHTML(r.iso3)})</span></div>
           <div>${escapeHTML(label)} (${escapeHTML(agg)}): <b>${escapeHTML(String(vtxt))}</b></div>
-          <div style="margin-top:4px; color:#8aa0bb;">n (24m reports): ${escapeHTML(String(r.n))}</div>
-          <div style="margin-top:6px; color:#9bd0ff;">click → filter country</div>
+          <div style="margin-top:4px; color:#8aa0bb;">N (24M Reports): ${escapeHTML(String(r.n))}</div>
         </div>
       `);
       circle.on('click', ()=> setCountryFilter(r.iso3));
@@ -1041,18 +976,17 @@ function renderMap(){
 
       const when = String(ev.created||'').slice(0,10);
       const name = (RECAP_MAP.find(x=>x.iso3===ev.iso3)||{}).name || ev.iso3 || '';
-      const title = ev.title || 'ACLED event';
+      const title = ev.title || 'ACLED Event';
       const loc = [ev.location, ev.admin1].filter(Boolean).join(', ');
       const et = [ev.event_type, ev.sub_event_type].filter(Boolean).join(' / ');
       const fat = (ev.fatalities!=null) ? String(ev.fatalities) : '0';
 
       m.bindPopup(`
         <div style="font-family:system-ui; font-size:13px; line-height:1.35">
-          <div style="font-weight:900;margin-bottom:6px;">${escapeHTML(title)}</div>
+          <div style="font-weight:700;margin-bottom:6px;">${escapeHTML(title)}</div>
           <div style="color:#8aa0bb">${escapeHTML(when)} · ${escapeHTML(name)} (${escapeHTML(ev.iso3||'')})</div>
           <div style="margin-top:6px">${escapeHTML(et)}</div>
-          <div style="margin-top:4px">${escapeHTML(loc)} · fatalities: <b>${escapeHTML(fat)}</b></div>
-          <div style="margin-top:6px; color:#9bd0ff;">click → filter country</div>
+          <div style="margin-top:4px">${escapeHTML(loc)} · Fatalities: <b>${escapeHTML(fat)}</b></div>
         </div>
       `);
 
@@ -1071,9 +1005,8 @@ document.getElementById('map-agg').onchange = renderMap;
 ============================= */
 async function fetchReliefWeb(daySpan, limit){
   const url = 'https://api.reliefweb.int/v1/reports?appname=' + encodeURIComponent(APPNAME);
-
   const body = {
-    limit: limit,
+    limit: Math.min(limit, 1000),  // ReliefWeb practical cap per request
     offset: 0,
     filter:{ operator:'AND', conditions:[ {field:'country.iso3', value: iso3ForQuery()} ] },
     fields:{ include:['id','title','url','body','body-html','country','source','theme','disaster_type','date.created'] },
@@ -1087,7 +1020,6 @@ async function fetchReliefWeb(daySpan, limit){
   }
   const json = await res.json();
   const data = json.data || [];
-
   const sinceMillis = Date.now() - daySpan*86400000;
 
   const items = data.map(r=>{
@@ -1114,7 +1046,7 @@ async function fetchReliefWeb(daySpan, limit){
     return {
       id: 'rw-'+r.id,
       sourceType: 'reliefweb',
-      title: f.title||'(untitled)',
+      title: f.title||'(Untitled)',
       url: f.url||'',
       created: f['date.created']||'',
       country: countryArr.map(c=>c.name).join(', '),
@@ -1152,7 +1084,6 @@ async function fetchACLED(daySpan, totalLimit){
     if(out.length >= hardMax) break;
 
     const per = Math.min(500, hardMax - out.length);
-
     const url = new URL('https://api.acleddata.com/acled/read');
     url.searchParams.set('key', key);
     url.searchParams.set('email', email);
@@ -1177,11 +1108,9 @@ async function fetchACLED(daySpan, totalLimit){
       if(!(isFinite(lat) && isFinite(lon))) return;
 
       const name = (RECAP_MAP.find(x=>x.iso3===iso3)||{}).name || iso3;
-
-      const title = `${e.event_type || 'event'}${e.sub_event_type ? ' · '+e.sub_event_type : ''}`;
+      const title = `${e.event_type || 'Event'}${e.sub_event_type ? ' · '+e.sub_event_type : ''}`;
       const when = e.event_date || '';
       const loc = [e.location, e.admin1].filter(Boolean).join(', ');
-
       const fat = (e.fatalities!=null) ? Number(e.fatalities) : 0;
 
       const baseText = [
@@ -1212,9 +1141,9 @@ async function fetchACLED(daySpan, totalLimit){
         country: name,
         iso3: iso3,
         source: 'ACLED',
-        theme: 'conflict & security',
-        type: 'event',
-        body: `date: ${when}\nlocation: ${loc}\nactors: ${(e.actor1||'')}${(e.actor2?(' vs '+e.actor2):'')}\nnotes: ${(e.notes||'')}\nfatalities: ${fat}`,
+        theme: 'Conflict & Security',
+        type: 'Event',
+        body: `Date: ${when}\nLocation: ${loc}\nActors: ${(e.actor1||'')}${(e.actor2?(' vs '+e.actor2):'')}\nNotes: ${(e.notes||'')}\nFatalities: ${fat}`,
         hdp, c15,
         risk,
         riskScore: risk.riskScore,
@@ -1234,31 +1163,27 @@ async function fetchACLED(daySpan, totalLimit){
 }
 
 /* =============================
-   Rendering: modal, table, dashboard
+   Rendering
 ============================= */
 function openSummary(it){
   const meta = [it.country, it.iso3?('('+it.iso3+')'):'', it.source, it.theme, it.type, it.sourceType].filter(Boolean).join(' · ');
-  const sum = summarizeText(it.body, 6) || summarizeText([it.title, meta].join(' '), 3) || '(요약 불가)';
+  const sum = summarizeText(it.body, 6) || summarizeText([it.title, meta].join(' '), 3) || '(No Summary)';
 
   document.getElementById('m-title').textContent = it.title;
   document.getElementById('m-meta').textContent = meta;
-
-  document.getElementById('m-badges').innerHTML = `
-    ${renderRiskBadge(it.risk)} ${renderConflictBadge(it.conflictIndex)}
-    <span style="margin-left:10px">${hbarHTML(it.hdp)}</span>
-    <span style="margin-left:10px">${renderC15Badges(it.c15)}</span>
-  `;
+  document.getElementById('m-badges').innerHTML =
+    `${renderRiskBadge(it.risk)} ${renderConflictBadge(it.conflictIndex)} `+
+    `<span style="margin-left:10px">${hbarHTML(it.hdp)}</span> `+
+    `<span style="margin-left:10px">${renderC15Badges(it.c15)}</span>`;
   document.getElementById('m-sum').textContent = sum;
-  const link = document.getElementById('m-link');
-  link.href = it.url || '#';
-
+  document.getElementById('m-link').href = it.url || '#';
   modal.style.display='flex';
 }
 
 function renderTable(items){
   const box = document.getElementById('results');
   if(!items.length){
-    box.innerHTML = '<div class="small">조건에 맞는 데이터가 없습니다.</div>';
+    box.innerHTML = '<div class="small">No Items.</div>';
     return;
   }
 
@@ -1272,33 +1197,24 @@ function renderTable(items){
       <td>${renderConflictBadge(it.conflictIndex)}</td>
       <td>${hbarHTML(it.hdp)}</td>
       <td>${renderC15Badges(it.c15)}</td>
-      <td>${it.url?`<a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">link</a>`:''}</td>
+      <td>${it.url?`<a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">Link</a>`:''}</td>
     </tr>
   `).join('');
 
-  const chips = [];
-  if(selectedISO3) chips.push(`<span class="badge">country: ${escapeHTML(selectedISO3)}</span>`);
-  if(selectedPartner) chips.push(`<span class="badge">partner: ${escapeHTML(selectedPartner)}</span>`);
-  if(listSpecialMode==='high') chips.push(`<span class="badge">mode: high risk</span>`);
-  if(listSpecialMode==='c4') chips.push(`<span class="badge">mode: heat≥4</span>`);
-
   box.innerHTML = `
-    <div class="small" style="margin-bottom:10px">
-      표시 ${items.length}개 (필터 적용됨). ${chips.join(' ')}
-    </div>
-    <div style="max-height:56vh; overflow:auto; border:1px solid var(--line); border-radius:16px">
+    <div style="max-height:58vh; overflow:auto; border:1px solid var(--line); border-radius:16px">
       <table>
         <thead>
           <tr>
-            <th style="width:92px">date</th>
-            <th>title</th>
-            <th style="width:170px">country</th>
-            <th style="width:160px">source</th>
-            <th style="width:90px">risk</th>
-            <th style="width:110px">conflict</th>
-            <th style="width:90px">hdp</th>
-            <th style="width:120px">c1~c15</th>
-            <th style="width:70px">url</th>
+            <th style="width:96px">Date</th>
+            <th>Title</th>
+            <th style="width:180px">Country</th>
+            <th style="width:170px">Source</th>
+            <th style="width:90px">Risk</th>
+            <th style="width:110px">Conflict</th>
+            <th style="width:90px">HDP</th>
+            <th style="width:120px">C-Codes</th>
+            <th style="width:70px">Url</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -1315,12 +1231,10 @@ function renderTable(items){
   });
 }
 
-/* ===== dashboard computations ===== */
 function pctBar(el, numerator, denom){
   const p = denom>0 ? (numerator/denom)*100 : 0;
   el.style.width = clamp(p, 0, 100).toFixed(1) + '%';
 }
-
 function formatTopList(arr){
   if(!arr.length) return '—';
   return arr.map(x=>x.label).join(' · ');
@@ -1334,12 +1248,10 @@ function updateDashboard(filtered){
   const high = filtered.filter(x=>x.risk && x.risk.riskLevel==='high').length;
   const c4 = filtered.filter(x=>(x.conflictIndex||0)>=4).length;
 
-  // HDP proportions
   const h = filtered.filter(x=>x.hdp && x.hdp.H==='yes').length;
   const d = filtered.filter(x=>x.hdp && x.hdp.D==='yes').length;
   const p = filtered.filter(x=>x.hdp && x.hdp.P==='yes').length;
 
-  // Top c-codes by count (use first code in c15 array)
   const codeCount = {};
   filtered.forEach(it=>{
     (it.c15||[]).forEach(c=>{
@@ -1351,7 +1263,6 @@ function updateDashboard(filtered){
     .slice(0,3)
     .map(([code,n])=>({label:`${code}(${n})`, code, n}));
 
-  // Top countries by item count
   const byC = {};
   filtered.forEach(it=>{
     const iso = it.iso3 || 'UNK';
@@ -1365,7 +1276,6 @@ function updateDashboard(filtered){
       return {label:`${nm}(${n})`, iso, n};
     });
 
-  // Top partners by mention in source (reports only)
   const byP = {};
   filtered.forEach(it=>{
     if(it.sourceType!=='reliefweb') return;
@@ -1379,14 +1289,12 @@ function updateDashboard(filtered){
     .slice(0,5)
     .map(([org,n])=>({label:`${org}(${n})`, org, n}));
 
-  // Recentness
   const latest = filtered
     .map(it=>Date.parse(it.created))
     .filter(t=>!isNaN(t))
     .sort((a,b)=>b-a)[0];
   const latestStr = latest ? new Date(latest).toISOString().slice(0,10) : '—';
 
-  // render KPI
   document.getElementById('kpi-items').textContent = String(total);
   document.getElementById('kpi-reports').textContent = String(reports);
   document.getElementById('kpi-events').textContent = String(events);
@@ -1401,26 +1309,22 @@ function updateDashboard(filtered){
     (total? `${Math.round((h/total)*100)}% H · ${Math.round((d/total)*100)}% D · ${Math.round((p/total)*100)}% P` : '—');
 
   document.getElementById('kpi-codes').textContent = formatTopList(topCodes);
-  document.getElementById('kpi-codes-s').textContent = topCodes.length
-    ? topCodes.map(x=>{
-        const nm = (CODES[x.code]||{}).name || '';
-        return `${x.code}: ${nm}`;
-      }).join(' · ')
-    : 'top 3 by count (filtered)';
+  document.getElementById('kpi-codes-s').textContent = topCodes.length ? topCodes.map(x=>{
+    const nm = (CODES[x.code]||{}).name || '';
+    return `${x.code}: ${nm}`;
+  }).join(' · ') : 'Top 3';
 
-  // side insights
   document.getElementById('side-countries').textContent = formatTopList(topCountries);
   document.getElementById('side-partners').textContent = formatTopList(topPartners);
   document.getElementById('side-recent').textContent = latestStr;
 
-  // scope / window chips
   const scopeParts = [];
-  if(selectedISO3) scopeParts.push('country='+selectedISO3);
-  if(selectedPartner) scopeParts.push('partner='+selectedPartner);
-  if(listSpecialMode) scopeParts.push('mode='+listSpecialMode);
-  document.getElementById('dash-scope').textContent = 'scope: ' + (scopeParts.length ? scopeParts.join(', ') : 'all');
+  if(selectedISO3) scopeParts.push('Country='+selectedISO3);
+  if(selectedPartner) scopeParts.push('Partner='+selectedPartner);
+  if(listSpecialMode) scopeParts.push('Mode='+listSpecialMode);
+  document.getElementById('dash-scope').textContent = 'Scope: ' + (scopeParts.length ? scopeParts.join(', ') : 'All');
   document.getElementById('dash-window').textContent =
-    'window: ' + String(document.getElementById('days').value||'') + ' days (fetch) · 24m (country aggregates)';
+    'Window: ' + String(document.getElementById('days').value||'') + ' Days';
 }
 
 /* =============================
@@ -1434,22 +1338,16 @@ function applyFiltersAndRender(){
 }
 
 /* =============================
-   Map refresh triggers
-============================= */
-function renderMapAndKeep(){
-  renderMap();
-}
-
-/* =============================
    Fetch orchestration
 ============================= */
 async function runFetch(){
   const status = document.getElementById('status');
   const mode = document.getElementById('src-mode').value;
-  const daySpan = Number(document.getElementById('days').value || 365);
-  const limit = Math.min(Number(document.getElementById('limit').value || 300), 1500);
 
-  status.textContent = 'fetching…';
+  const daySpan = Number(document.getElementById('days').value || 3650);
+  const limit = MAX_ITEMS;
+
+  status.textContent = 'Fetching...';
   status.className = 'small';
 
   try{
@@ -1473,11 +1371,10 @@ async function runFetch(){
     document.getElementById('filter-country').value = selectedISO3 || "";
     document.getElementById('filter-partner').value = selectedPartner || "";
 
-    status.textContent = `done · ${currentItems.length} items`;
+    status.textContent = `Done · ${currentItems.length} Items`;
     applyFiltersAndRender();
-
   }catch(e){
-    status.textContent = 'error';
+    status.textContent = 'Error';
     status.className = 'small err';
     document.getElementById('results').innerHTML = `<div class="small err">${escapeHTML(e.message || String(e))}</div>`;
     countryLayer.clearLayers();
@@ -1487,27 +1384,32 @@ async function runFetch(){
 document.getElementById('fetch').onclick = runFetch;
 
 /* =============================
-   Country dropdown already rendered
+   Map controls
 ============================= */
+document.getElementById('map-refresh').onclick = renderMap;
+document.getElementById('map-layer').onchange = renderMap;
+document.getElementById('map-metric').onchange = renderMap;
+document.getElementById('map-agg').onchange = renderMap;
 
 /* =============================
-   Country aggregate layer uses filtered data;
-   so whenever filters change, map updates automatically.
+   Map render (requires layers & helpers above)
 ============================= */
+function renderCountryDropdownValue(){
+  document.getElementById('filter-country').value = selectedISO3 || "";
+}
+function renderPartnerDropdownValue(){
+  document.getElementById('filter-partner').value = selectedPartner || "";
+}
+
+/* Map mode uses existing renderMap() above */
 
 /* =============================
-   Initial blank dashboard
+   Init
 ============================= */
+document.getElementById('country-chip').textContent = 'All 20';
+document.getElementById('limit-chip').textContent = 'Max';
 updateDashboard([]);
 renderMap();
-
-/* =============================
-   Source UI should refresh map layer selection too
-============================= */
-document.getElementById('src-mode').onchange = ()=>{
-  syncSourceUI();
-  renderMapAndKeep();
-};
 </script>
 </body>
 </html>
