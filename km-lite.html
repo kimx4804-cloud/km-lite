@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>km-lite v2.2 — recap 20개국 · tf-idf · hdp(binary) · risk · c1~c15</title>
+<title>km-lite v2.3 — recap 20개국 · tf-idf · hdp(binary) · risk · c1~c15 · multi-source</title>
 
 <style>
 :root{
@@ -174,7 +174,7 @@ a{color:#9bd0ff}
 </head>
 
 <body>
-<h2>recap 경량 지식관리체계 v2.2 (20개국 자동수집 · tf-idf · hdp(binary) · risk · c1~c15)</h2>
+<h2>recap 경량 지식관리체계 v2.3 (멀티소스 · 20개국 자동수집 · tf-idf · hdp(binary) · risk · c1~c15)</h2>
 <p class="small">
   로컬 서버에서 여세요(예: <span class="mono">py -m http.server 8000</span>).<br/>
   저장 시 요약·hdp·risk·분류(c1~c15)가 <span class="mono">localStorage</span>에 저장됩니다.
@@ -189,6 +189,25 @@ Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Pr
 <div class="flex panel">
   <label>최근 일수</label><input id="rw-days" type="number" value="365" style="width:100px"/>
   <label>최대 개수</label><input id="rw-limit" type="number" value="300" style="width:110px"/>
+
+  <label>소스</label>
+  <select id="src-select">
+    <option value="reliefweb">reliefweb (api)</option>
+    <option value="rss">rss/atom</option>
+    <option value="json">json 붙여넣기</option>
+  </select>
+
+  <span id="src-rss-box" style="display:none" class="flex">
+    <label class="small">rss url</label>
+    <input id="rss-url" style="width:340px" placeholder="https://example.org/feed.xml"/>
+    <span class="small">※ cors 차단 시 allorigins 프록시 사용(기본 on)</span>
+  </span>
+
+  <div id="src-json-box" style="display:none; width:100%">
+    <label class="small">json 배열(아이템 리스트) 붙여넣기</label><br/>
+    <textarea id="json-paste" rows="4" style="width:100%" placeholder='[{"title":"...","url":"...","created":"2025-12-01","country":"Kenya","source":"UNDP","body":"..."}]'></textarea>
+  </div>
+
   <button id="open-country" title="국가 필터">국가 필터</button>
   <span id="country-chip" class="badge">전체 20개국</span>
   <button id="rw-fetch">가져오기</button>
@@ -198,7 +217,7 @@ Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Pr
 <div id="savebar" class="stickybar flex" style="justify-content:space-between">
   <div class="small">
     체크 후 저장하면 하단 패널에 누적됩니다.<br/>
-    v2.2: “타일형 국가 대시보드(한 화면)” + 클릭 상세.
+    v2.3: reliefweb 외 rss/json 입력 지원 + 국가 자동탐지.
   </div>
   <div class="flex">
     <button id="btn-risk-narrative">최근 30일 위험 요약 생성</button>
@@ -318,7 +337,7 @@ function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
      상수 및 국가 목록
 ============================= */
 /* reliefweb: appname은 승인된 값이어야 합니다.
-   지금 값이 미승인이라면(403: "not using an approved appname") vapidoc에서 appname 발급 필요 */
+   값이 미승인이라면(403: "not using an approved appname") vapidoc에서 appname 발급 필요 */
 const APPNAME   = "HyunKim+recap_km_lite+a5Ttg7U8";
 const DB_KEY    = "km-lite-db";
 
@@ -338,6 +357,33 @@ const RECAP_MAP = RECAP_NAMES.map((n,i)=>({name:n,iso3:RECAP_ISO3[i]}));
 
 let pickedISO3 = [];
 let currentItems = [];
+
+/* =============================
+   국가 자동탐지 (rss/json용)
+   - 제목/본문/메타에서 RECAP_NAMES를 찾아 country 채움
+============================= */
+const COUNTRY_ALIASES = {
+  'Sao Tome and Principe': ['Sao Tome and Principe','São Tomé and Príncipe','Sao Tome','Sao Tomé','STP'],
+  'Timor-Leste': ['Timor-Leste','Timor Leste','East Timor','TLS'],
+  'Central African Republic': ['Central African Republic','CAR','C.A.R.'],
+  'Papua New Guinea': ['Papua New Guinea','PNG'],
+  'Solomon Islands': ['Solomon Islands','SLB']
+};
+function detectCountryFromText(text){
+  const T = (text||'').toLowerCase();
+  const hits = [];
+  for(const nm of RECAP_NAMES){
+    const aliases = (COUNTRY_ALIASES[nm] || [nm]).map(x=>String(x).toLowerCase());
+    const found = aliases.some(a=>{
+      if(!a) return false;
+      const re = new RegExp('\\b'+a.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i');
+      return re.test(T);
+    });
+    if(found) hits.push(nm);
+  }
+  // 중복 제거
+  return Array.from(new Set(hits));
+}
 
 /* =============================
      HDP binary
@@ -571,7 +617,7 @@ function renderConflictBadge(idx){
 }
 
 /* =============================
-  c1~c15 하이브리드 분류(간단 렌더만)
+  c1~c15 하이브리드 분류
 ============================= */
 const CODES = {
   C1:{name:'사업·프로젝트 개요 & 배경',core:['background','project overview','context analysis','needs assessment','맥락','배경'],related:['objective','goal','목표'],ref:['overview']},
@@ -664,7 +710,7 @@ function renderNotes(filter){
   }
   let html='';
   db.notes.forEach(n=>{
-    const hay=[n.title,n.summary,n.country,n.hdpLabel]
+    const hay=[n.title,n.summary,n.country,n.hdpLabel,n.source]
       .concat((n.c15||[]).map(x=>x.code+' '+x.name))
       .concat(n.risk && n.risk.riskTags ? n.risk.riskTags : [])
       .join(' ').toLowerCase();
@@ -676,7 +722,7 @@ function renderNotes(filter){
           <div><strong>${escapeHTML(n.title)}</strong></div>
           <div class="small mono">${new Date(n.created).toISOString().slice(0,10)}</div>
         </div>
-        <div class="small" style="margin:6px 0"><em>${escapeHTML(n.country||'')}</em></div>
+        <div class="small" style="margin:6px 0"><em>${escapeHTML(n.country||'')}</em> <span class="badge">${escapeHTML(n.source||'')}</span></div>
         <div style="margin:6px 0">${renderRiskBadge(n.risk)} ${renderConflictBadge(n.risk && n.risk.conflictIndex)}</div>
         <div style="margin:6px 0">${hbarHTML(n.hdp)}</div>
         <div class="small" style="margin:6px 0">${renderC15Badges(n.c15)}</div>
@@ -848,7 +894,8 @@ function openCountryDetail(countryName){
         (it.created ? String(it.created).slice(0,10) : ''),
         it.source || '',
         it.theme || '',
-        it.type || ''
+        it.type || '',
+        it._src ? ('src:'+it._src) : ''
       ].filter(Boolean).join(' · ');
 
       return `
@@ -863,7 +910,7 @@ function openCountryDetail(countryName){
             <span class="small" style="margin-left:8px">${renderC15Badges(it.c15)}</span>
           </div>
           <div class="flex" style="margin-top:10px;gap:10px">
-            <a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">원문</a>
+            ${it.url?`<a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">원문</a>`:''}
             <button class="small btn-open-summary" data-id="${escapeAttr(it.id)}">요약 보기</button>
           </div>
         </div>
@@ -881,14 +928,13 @@ function openCountryDetail(countryName){
 
   document.getElementById('country-detail-modal').style.display='flex';
 }
-
 document.getElementById('cd-close').onclick=()=>{ document.getElementById('country-detail-modal').style.display='none'; };
 
 /* =============================
    요약 모달
 ============================= */
 function openSummaryModal(it){
-  const meta = [it.country,it.source,it.theme,it.type].filter(Boolean).join(' · ');
+  const meta = [it.country,it.source,it.theme,it.type,(it._src?('src:'+it._src):'')].filter(Boolean).join(' · ');
   const sumTxt =
     summarizeText(it.body,5) ||
     summarizeText(it.title+' '+meta,3) ||
@@ -907,7 +953,7 @@ function openSummaryModal(it){
   document.getElementById('summary-content').innerHTML=
     `<p>${escapeHTML(sumTxt)}</p>
      <hr/>
-     <p><a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">원문 보기</a></p>
+     ${it.url?`<p><a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">원문 보기</a></p>`:''}
      <p class="small" style="color:#9fb2c8">
        ${(it.risk && it.risk.riskTags && it.risk.riskTags.length) ? 'risk tags: '+escapeHTML(it.risk.riskTags.join(', ')) : ''}
      </p>`;
@@ -932,21 +978,182 @@ window.addEventListener('keydown',e=>{
 });
 
 /* =============================
-  ReliefWeb fetch
-  - 주의: date.created "range from" 같은 형식은 종종 에러 유발
+  멀티소스 공통 스키마 & 디스패치
+============================= */
+function normalizeItem(input){
+  // input: {id,title,url,created,country,source,theme,type,body,_src}
+  const title = input.title || '';
+  const url = input.url || '';
+  const created = input.created || '';
+  let country = input.country || '';
+  const source = input.source || '';
+  const theme = input.theme || '';
+  const type = input.type || '';
+  const body = input.body || '';
+  const _src = input._src || 'unknown';
+
+  // country가 비어있으면 자동탐지
+  if(!country || !String(country).trim()){
+    const guess = detectCountryFromText([title, source, theme, type, body].join(' | '));
+    if(guess.length) country = guess.join(', ');
+  }
+
+  const metaTxt = [title, theme, type, source, country].filter(Boolean).join(' | ');
+  const baseText = (metaTxt + ' ' + body).trim();
+
+  const hdp = hdpScore(baseText);
+  const c15 = classifyC15(baseText, 3);
+  const risk = analyzeRiskAndConflict(baseText);
+
+  return {
+    id: input.id || ('item-' + Math.random().toString(16).slice(2)),
+    _src,
+    title, url, created, country, source, theme, type,
+    body,
+    hdp,
+    c15,
+    risk,
+    riskScore: risk.riskScore,
+    conflictIndex: risk.conflictIndex
+  };
+}
+
+function parseDateSafe(x){
+  const t = Date.parse(x);
+  return isNaN(t) ? null : t;
+}
+function withinDays(created, daySpan){
+  const t = parseDateSafe(created);
+  if(t==null) return true;
+  const sinceMillis = Date.now() - daySpan*86400000;
+  return t >= sinceMillis;
+}
+
+function applyCountryFilter(items){
+  if(!pickedISO3.length) return items;
+  const allowed = new Set(RECAP_MAP.filter(x=>pickedISO3.includes(x.iso3)).map(x=>x.name));
+  return (items||[]).filter(it=>{
+    const main = (it.country||'').split(',')[0].trim();
+    return allowed.has(main);
+  });
+}
+
+async function fetchFromSelectedSource(){
+  const src = document.getElementById('src-select').value;
+  if(src === 'reliefweb') return await fetchReliefWeb();
+  if(src === 'rss') return await fetchRSS();
+  if(src === 'json') return await fetchJSONPaste();
+  throw new Error('unknown source: ' + src);
+}
+
+/* =============================
+  RSS/ATOM fetch (CORS 대응 포함)
+============================= */
+async function fetchRSS(){
+  const rssUrl = (document.getElementById('rss-url').value || '').trim();
+  if(!rssUrl){ alert('rss url을 입력하세요.'); return []; }
+
+  // CORS 우회(기본 ON)
+  const useProxy = true;
+  const finalUrl = useProxy
+    ? 'https://api.allorigins.win/raw?url=' + encodeURIComponent(rssUrl)
+    : rssUrl;
+
+  const res = await fetch(finalUrl);
+  if(!res.ok) throw new Error('rss fetch failed: ' + res.status);
+
+  const xmlText = await res.text();
+  const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+
+  const items = Array.from(doc.querySelectorAll('item'));
+  const entries = Array.from(doc.querySelectorAll('entry'));
+  const nodes = items.length ? items : entries;
+
+  const host = (()=>{ try{ return (new URL(rssUrl)).hostname; }catch(e){ return 'rss'; }})();
+
+  const out = nodes.map((n, idx) => {
+    const isAtom = n.tagName.toLowerCase() === 'entry';
+    const title = (n.querySelector('title')?.textContent || '').trim();
+
+    let url = '';
+    if(isAtom){
+      const linkEl = n.querySelector('link');
+      url = (linkEl?.getAttribute('href') || linkEl?.textContent || '').trim();
+    }else{
+      url = (n.querySelector('link')?.textContent || '').trim();
+    }
+
+    const created =
+      (n.querySelector('pubDate')?.textContent || '').trim() ||
+      (n.querySelector('updated')?.textContent || '').trim() ||
+      (n.querySelector('published')?.textContent || '').trim();
+
+    const body =
+      (n.querySelector('content\\:encoded')?.textContent || '').trim() ||
+      (n.querySelector('content')?.textContent || '').trim() ||
+      (n.querySelector('description')?.textContent || '').trim() ||
+      (n.querySelector('summary')?.textContent || '').trim();
+
+    return normalizeItem({
+      id: 'rss-' + idx + '-' + (url || title),
+      _src: 'rss',
+      title,
+      url,
+      created,
+      country: '',
+      source: host,
+      theme: '',
+      type: '',
+      body
+    });
+  });
+
+  return out;
+}
+
+/* =============================
+  JSON 붙여넣기 import
+============================= */
+async function fetchJSONPaste(){
+  const raw = (document.getElementById('json-paste').value || '').trim();
+  if(!raw){ alert('json을 붙여넣으세요.'); return []; }
+
+  let arr;
+  try{
+    arr = JSON.parse(raw);
+  }catch(e){
+    alert('json 파싱 실패: ' + e.message);
+    return [];
+  }
+  if(!Array.isArray(arr)){
+    alert('json은 반드시 배열([ ... ]) 형태여야 합니다.');
+    return [];
+  }
+
+  return arr.map((x, i) => normalizeItem({
+    id: x.id || ('json-' + i),
+    _src: 'json',
+    title: x.title || '',
+    url: x.url || '',
+    created: x.created || x.date || '',
+    country: x.country || '',
+    source: x.source || '',
+    theme: x.theme || '',
+    type: x.type || '',
+    body: x.body || x.text || x.content || ''
+  }));
+}
+
+/* =============================
+  ReliefWeb fetch (전용)
   - 여기서는 "country 필터 + sort desc"만 사용하고, 최근일수는 가져온 뒤 JS에서 컷
 ============================= */
-async function rwFetch(){
-  const out = document.getElementById('rw-results');
+async function fetchReliefWeb(){
   const st  = document.getElementById('rw-status');
-  out.innerHTML='';
-  st.textContent='요청 중…';
-  document.getElementById('risk-narrative-box').style.display = 'none';
 
   const daySpan = Number(document.getElementById('rw-days').value || 365);
   const limit   = Math.min(Number(document.getElementById('rw-limit').value || 300),1000);
-  const sinceDate = new Date(Date.now()-daySpan*86400000);
-  const sinceMillis = sinceDate.getTime();
+  const sinceMillis = Date.now() - daySpan*86400000;
 
   const iso3ForQuery = pickedISO3.length ? pickedISO3 : RECAP_ISO3;
 
@@ -970,116 +1177,59 @@ async function rwFetch(){
     sort:['date.created:desc']
   };
 
-  try{
-    const res=await fetch(url,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)
-    });
+  const res=await fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
 
-    if(!res.ok){
-      st.textContent='불러오기 실패('+res.status+')';
-      const t = await res.text().catch(()=> '');
-      out.innerHTML = `<div class="small err">
-        HTTP ${res.status}<br/>
-        ${escapeHTML(t).slice(0,800)}
-      </div>`;
-      return;
-    }
-
-    const json=await res.json();
-    const data=json.data || [];
-
-    currentItems=data.map(r=>{
-      const f=r.fields||{};
-      const rawHtml=(f['body-html']||'')
-        .replace(/<style[\s\S]*?<\/style>/gi,' ')
-        .replace(/<[^>]+>/g,' ');
-      const bodyText=(f.body && String(f.body).trim().length>0) ? f.body : rawHtml;
-
-      const metaTxt=[
-        f.title||'',
-        (f.theme||[]).map(t=>t.name).join(', '),
-        (f.disaster_type||[]).map(d=>d.name).join(', '),
-        (f.source||[]).map(s=>s.name).join(', '),
-        (f.country||[]).map(c=>c.name).join(', ')
-      ].join(' | ');
-
-      const baseText = metaTxt + ' ' + bodyText;
-      const hdp = hdpScore(baseText);
-      const c15 = classifyC15(baseText,3);
-      const risk = analyzeRiskAndConflict(baseText);
-
-      return {
-        id:r.id,
-        title:f.title||'',
-        url:f.url||'',
-        created:f['date.created']||'',
-        country:(f.country||[]).map(c=>c.name).join(', '),
-        source:(f.source||[]).map(s=>s.name).join(', '),
-        theme:(f.theme||[]).map(t=>t.name).join(', '),
-        type:(f.disaster_type||[]).map(d=>d.name).join(', '),
-        body:bodyText,
-        hdp,
-        c15,
-        risk,
-        riskScore: risk.riskScore,
-        conflictIndex: risk.conflictIndex
-      };
-    });
-
-    // 최근일수 컷(클라에서)
-    currentItems=currentItems.filter(it=>{
-      const t=Date.parse(it.created);
-      return isNaN(t) ? true : (t>=sinceMillis);
-    });
-
-    if(!currentItems.length){
-      st.textContent='완료 (0개)';
-      out.innerHTML='<div class="small">조건에 맞는 문서가 없습니다.</div>';
-      renderDashboardTiles();
-      return;
-    }
-
-    st.textContent='완료 ('+currentItems.length+'개)';
-    renderDashboardTiles();
-
-    // 테이블 렌더(저장용 체크 + 제목 클릭 요약)
-    let rows='';
-    currentItems.forEach((it,i)=>{
-      rows+=`
-        <tr>
-          <td style="width:40px"><input type="checkbox" class="rw-check" data-i="${i}"></td>
-          <td class="title-cell" style="cursor:pointer;text-decoration:underline">${escapeHTML(it.title)}</td>
-          <td>${escapeHTML(it.country)}</td>
-          <td>${escapeHTML(it.source)}</td>
-          <td>${renderRiskBadge(it.risk)}</td>
-          <td>${renderConflictBadge(it.conflictIndex)}</td>
-          <td>${hbarHTML(it.hdp)}</td>
-          <td>${renderC15Badges(it.c15)}</td>
-          <td><a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">링크</a></td>
-        </tr>`;
-    });
-
-    out.innerHTML=`
-      <table>
-        <thead>
-          <tr>
-            <th></th><th>제목</th><th>국가</th><th>출처</th>
-            <th>risk</th><th>conflict</th><th>hdp</th><th>c1~c15</th><th>url</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-
-    out.querySelectorAll('.title-cell').forEach((td,idx)=>{
-      td.onclick=()=> openSummaryModal(currentItems[idx]);
-    });
-
-  }catch(e){
-    st.textContent='불러오기 실패(fetch)';
-    out.innerHTML='<div class="small err">'+escapeHTML(e.message)+'</div>';
+  if(!res.ok){
+    st.textContent='불러오기 실패('+res.status+')';
+    const t = await res.text().catch(()=> '');
+    throw new Error('HTTP '+res.status+' / '+t.slice(0,800));
   }
+
+  const json=await res.json();
+  const data=json.data || [];
+
+  let items = data.map(r=>{
+    const f=r.fields||{};
+    const rawHtml=(f['body-html']||'')
+      .replace(/<style[\s\S]*?<\/style>/gi,' ')
+      .replace(/<[^>]+>/g,' ');
+    const bodyText=(f.body && String(f.body).trim().length>0) ? f.body : rawHtml;
+
+    const metaTxt=[
+      f.title||'',
+      (f.theme||[]).map(t=>t.name).join(', '),
+      (f.disaster_type||[]).map(d=>d.name).join(', '),
+      (f.source||[]).map(s=>s.name).join(', '),
+      (f.country||[]).map(c=>c.name).join(', ')
+    ].join(' | ');
+
+    const baseText = metaTxt + ' ' + bodyText;
+
+    return normalizeItem({
+      id: r.id,
+      _src: 'reliefweb',
+      title: f.title||'',
+      url: f.url||'',
+      created: f['date.created']||'',
+      country: (f.country||[]).map(c=>c.name).join(', '),
+      source: (f.source||[]).map(s=>s.name).join(', '),
+      theme: (f.theme||[]).map(t=>t.name).join(', '),
+      type: (f.disaster_type||[]).map(d=>d.name).join(', '),
+      body: bodyText
+    });
+  });
+
+  // 최근일수 컷(클라에서)
+  items = items.filter(it=>{
+    const t=Date.parse(it.created);
+    return isNaN(t) ? true : (t>=sinceMillis);
+  });
+
+  return items;
 }
 
 /* =============================
@@ -1136,7 +1286,9 @@ document.getElementById('rw-to-notes').onclick=function(){
 
     const meta=[it.title,it.country,it.source].join(' | ');
     const summary=summarizeText(it.body||meta,3) || meta;
-    const id='rw-'+it.id;
+
+    // 소스별 중복 방지 id
+    const id=(it._src||'src')+'-'+String(it.id);
 
     if(db.notes.some(n=>n.id===id)) return;
 
@@ -1145,7 +1297,7 @@ document.getElementById('rw-to-notes').onclick=function(){
       title:it.title,
       body:it.body,
       country:it.country,
-      source:it.source,
+      source: it.source + (it._src?(' / '+it._src):''),
       url:it.url,
       created:now,
       summary,
@@ -1162,8 +1314,91 @@ document.getElementById('rw-to-notes').onclick=function(){
   document.getElementById('rw-status').textContent = added+'개 노트 저장 완료';
 };
 
+/* =============================
+  소스 ui show/hide
+============================= */
+function updateSourceUI(){
+  const src = document.getElementById('src-select').value;
+  document.getElementById('src-rss-box').style.display  = (src==='rss')  ? 'inline-flex' : 'none';
+  document.getElementById('src-json-box').style.display = (src==='json') ? 'block' : 'none';
+}
+document.getElementById('src-select').onchange = updateSourceUI;
+
+/* =============================
+  가져오기 버튼 (공통 디스패치)
+============================= */
+document.getElementById('rw-fetch').addEventListener('click', async ()=>{
+  const out = document.getElementById('rw-results');
+  const st  = document.getElementById('rw-status');
+  out.innerHTML='';
+  st.textContent='요청 중…';
+  document.getElementById('risk-narrative-box').style.display = 'none';
+
+  const daySpan = Number(document.getElementById('rw-days').value || 365);
+
+  try{
+    let items = await fetchFromSelectedSource();
+
+    // (1) 최근일수 필터(공통)
+    items = (items||[]).filter(it => withinDays(it.created, daySpan));
+
+    // (2) 국가 필터(공통) — rss/json은 자동탐지 country 기준으로 적용
+    items = applyCountryFilter(items);
+
+    currentItems = items;
+
+    if(!currentItems.length){
+      st.textContent='완료 (0개)';
+      out.innerHTML='<div class="small">조건에 맞는 문서가 없습니다.</div>';
+      renderDashboardTiles();
+      return;
+    }
+
+    st.textContent='완료 ('+currentItems.length+'개)';
+    renderDashboardTiles();
+
+    // 테이블 렌더
+    let rows='';
+    currentItems.forEach((it,i)=>{
+      rows+=`
+        <tr>
+          <td style="width:40px"><input type="checkbox" class="rw-check" data-i="${i}"></td>
+          <td class="title-cell" style="cursor:pointer;text-decoration:underline">${escapeHTML(it.title)}</td>
+          <td>${escapeHTML(it.country)}</td>
+          <td>${escapeHTML(it.source)} <span class="badge">${escapeHTML(it._src||'')}</span></td>
+          <td>${renderRiskBadge(it.risk)}</td>
+          <td>${renderConflictBadge(it.conflictIndex)}</td>
+          <td>${hbarHTML(it.hdp)}</td>
+          <td>${renderC15Badges(it.c15)}</td>
+          <td>${it.url?`<a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">링크</a>`:''}</td>
+        </tr>`;
+    });
+
+    out.innerHTML=`
+      <table>
+        <thead>
+          <tr>
+            <th></th><th>제목</th><th>국가</th><th>출처</th>
+            <th>risk</th><th>conflict</th><th>hdp</th><th>c1~c15</th><th>url</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+    out.querySelectorAll('.title-cell').forEach((td,idx)=>{
+      td.onclick=()=> openSummaryModal(currentItems[idx]);
+    });
+
+  }catch(e){
+    st.textContent='불러오기 실패';
+    out.innerHTML='<div class="small err">'+escapeHTML(e.message)+'</div>';
+  }
+});
+
+/* =============================
+  기타 이벤트
+============================= */
 document.getElementById('btn-risk-narrative').onclick = buildRiskNarrative;
-document.getElementById('rw-fetch').addEventListener('click', rwFetch);
 
 document.getElementById('notes-refresh').onclick=function(){
   renderNotes(document.getElementById('notes-q').value);
@@ -1184,6 +1419,7 @@ document.getElementById('dash-agg').onchange = renderDashboardTiles;
 document.getElementById('dash-sort').onchange = renderDashboardTiles;
 
 /* 초기 */
+updateSourceUI();
 migrateNotesIfNeeded();
 renderNotes('');
 renderDashboardTiles();
