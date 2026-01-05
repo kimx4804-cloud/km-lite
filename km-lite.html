@@ -1,106 +1,98 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Km-lite v2.3 — Multi-source · Tf-idf · Hdp · Risk · C1–C15</title>
+<title>Km-lite v2.3 — Multi-source · HdP(binary) · Risk · C1~C15 · Acled Map</title>
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+  crossorigin=""
+/>
 
 <style>
 :root{
   --bg:#0b0f14;
   --fg:#e6eef8;
   --mut:#8aa0bb;
-  --line:#253245;
-  --card: rgba(15,22,32,.35);
-  --card2: rgba(15,22,32,.25);
+  --line:#263246;
+  --card:#0f1620;
+  --card2:rgba(15,22,32,.35);
+  --accent:#3aa3ff;
   --ok:#61d661;
   --warn:#f2b45a;
   --bad:#ff5c5c;
-  --chip:#0f1620;
-  --h-col:#3aa3ff;
-  --d-col:#61d661;
-  --p-col:#f2b45a;
-  --off:#364254;
-  --risk-low:#43c174;
-  --risk-med:#f2b45a;
-  --risk-high:#ff5c5c;
-  --conf-low:#61d661;
-  --conf-med:#f2b45a;
-  --conf-high:#ff5c5c;
 }
 
 *{box-sizing:border-box}
 body{
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,Arial,sans-serif;
-  background:var(--bg); color:var(--fg); margin:0; padding:14px;
-  font-size:14px; line-height:1.5;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Arial,sans-serif;
+  background:var(--bg); color:var(--fg);
+  margin:0; padding:14px;
+  font-size:14px;
 }
-h2{margin:0 0 10px; font-size:18px; font-weight:750}
-textarea,input,button,select{
-  border-radius:10px; padding:.45rem .6rem; font-size:14px;
-  border:1px solid rgba(255,255,255,.10); background:#0f1620; color:var(--fg)
+h1{
+  font-size:16px; font-weight:700; margin:0 0 10px;
 }
-button{cursor:pointer}
 .small{color:var(--mut);font-size:12px}
 .mono{font-family:ui-monospace,Consolas,Menlo,monospace}
 .err{color:#ffb4b4}
-hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
+
+input,button,select,textarea{
+  border-radius:10px;
+  padding:.42rem .55rem;
+  font-size:13px;
+  border:1px solid rgba(255,255,255,.10);
+  background:var(--card);
+  color:var(--fg)
+}
+button{cursor:pointer}
+a{color:#9bd0ff}
 
 .flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.card{border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:10px;margin-bottom:10px;background:var(--card)}
-.panel{border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:10px;background:var(--card)}
-.badge{
-  display:inline-block;padding:2px 8px;border:1px solid rgba(255,255,255,.12);
-  border-radius:999px;font-size:11px;color:var(--mut);
-  margin-right:6px;margin-bottom:4px
-}
-.status{
-  display:inline-block; padding:2px 8px; border-radius:999px;
-  font-size:11px; font-weight:650; color:#000;
-}
-.st-ok{background:var(--ok)}
-.st-warn{background:var(--warn)}
-.st-bad{background:var(--bad)}
-
-.hdp-badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:11px;font-weight:800;margin-right:4px;}
-.hdp-on{color:#000}
-.hdp-H{background:var(--h-col)}
-.hdp-D{background:var(--d-col)}
-.hdp-P{background:var(--p-col)}
-.hdp-off{background:var(--off); color:#8da0b5;}
-
-.risk-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:850;color:#000;}
-.risk-low{background:var(--risk-low)}
-.risk-med{background:var(--risk-med)}
-.risk-high{background:var(--risk-high)}
-.conflict-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:850;color:#000;}
-.conf-low{background:var(--conf-low)}
-.conf-med{background:var(--conf-med)}
-.conf-high{background:var(--conf-high)}
-.policy-flag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;border:1px solid var(--risk-med);color:var(--risk-med);margin-left:6px;}
-
-.stickybar{
-  position:sticky;top:8px;z-index:5;background:var(--bg);
-  border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:10px;margin:10px 0
-}
-
-#rw-results{
-  margin-top:10px;max-height:52vh;overflow:auto;
+.panel{
   border:1px solid rgba(255,255,255,.10);
-  padding:.6rem;border-radius:14px;background:var(--card2)
+  border-radius:14px;
+  padding:10px;
+  background:var(--card2);
+}
+.card{
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;
+  padding:10px;
+  background:rgba(15,22,32,.28);
+}
+.badge{
+  display:inline-block;
+  padding:2px 8px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:999px;
+  font-size:11px;
+  color:var(--mut);
 }
 
-table{border-collapse:collapse;width:100%;font-size:13px}
-td,th{border:1px solid rgba(255,255,255,.10);padding:8px;text-align:left;vertical-align:top}
-th{position:sticky;top:0;background:#0f1620;z-index:2}
+.grid2{
+  display:grid;
+  grid-template-columns: 1.1fr .9fr;
+  gap:10px;
+}
+@media (max-width:1100px){ .grid2{grid-template-columns:1fr;} }
 
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:1000;align-items:center;justify-content:center;padding:16px}
-.modal>div{background:var(--bg);color:var(--fg);border:1px solid rgba(255,255,255,.12);border-radius:14px;box-shadow:0 0 22px rgba(0,0,0,.55)}
-#summary-box{width:min(820px,92vw);max-height:84vh;overflow:auto;padding:18px}
-#country-box{width:min(860px,92vw);max-height:84vh;overflow:auto;padding:16px}
-.country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px}
+#map{
+  height:68vh;              /* 요구: 지도 위아래 길이 확장 */
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);
+  overflow:hidden;
+}
 
-.dash-grid{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:10px;}
+/* dashboard tiles */
+.dash-grid{
+  display:grid;
+  grid-template-columns:repeat(5, minmax(0,1fr));
+  gap:10px;
+}
 @media (max-width:1100px){ .dash-grid{grid-template-columns:repeat(4,1fr);} }
 @media (max-width:860px){ .dash-grid{grid-template-columns:repeat(2,1fr);} }
 
@@ -108,157 +100,240 @@ th{position:sticky;top:0;background:#0f1620;z-index:2}
   border:1px solid rgba(255,255,255,.10);
   border-radius:14px;
   padding:10px;
-  background: var(--card);
+  background: rgba(15,22,32,.28);
   cursor:pointer;
-  transition: transform .07s ease;
 }
-.dash-tile:hover{ transform: translateY(-1px); }
-.dash-name{ font-weight:720; font-size:13px; }
-.dash-sub{ color:var(--mut); font-size:11px; margin-top:2px; line-height:1.35; }
-.dash-val{ font-weight:780; font-size:16px; margin-top:8px; }
+.dash-tile:hover{ border-color: rgba(58,163,255,.35); }
+.dash-name{ font-weight:700; font-size:13px; }
+.dash-sub{ color:var(--mut); font-size:11px; margin-top:4px; line-height:1.35; }
+.dash-val{ font-weight:700; font-size:16px; margin-top:8px; }
 
-.mini-bar{height:8px;border-radius:999px;background: rgba(255,255,255,.06);overflow:hidden;margin-top:8px;border:1px solid rgba(255,255,255,.10);}
-.mini-bar > div{height:100%;width:0%;background: linear-gradient(90deg, rgba(58,163,255,.9), rgba(97,214,97,.85));}
-
-.kv{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px}
-@media (max-width:860px){ .kv{grid-template-columns:1fr;} }
-.kv > div{border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:10px;background:var(--card2)}
+.kv{
+  display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px;
+}
+@media (max-width:860px){ .kv{grid-template-columns:1fr 1fr;} }
+.kv > div{
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  padding:10px;
+  background:rgba(15,22,32,.18)
+}
 .kv .k{color:var(--mut);font-size:11px}
-.kv .v{font-size:16px;font-weight:780;margin-top:6px}
+.kv .v{font-size:16px;font-weight:700;margin-top:6px}
 
-a{color:#9bd0ff}
+table{border-collapse:collapse;width:100%;font-size:13px}
+td,th{border:1px solid rgba(255,255,255,.10);padding:8px;text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:#0f1620;z-index:2}
+
+.modal{
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.62); z-index:1000;
+  align-items:center; justify-content:center; padding:16px
+}
+.modal>div{
+  background:var(--bg); color:var(--fg);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;
+  box-shadow:0 0 22px rgba(0,0,0,.55)
+}
+#summary-box{width:min(860px,92vw);max-height:86vh;overflow:auto;padding:16px}
+#country-box{width:min(860px,92vw);max-height:86vh;overflow:auto;padding:16px}
+.country-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:10px;margin-top:10px
+}
+
+/* badges */
+.hdp-badge{
+  display:inline-block;
+  padding:2px 7px;
+  border-radius:8px;
+  font-size:11px;
+  font-weight:700;
+  margin-right:4px;
+}
+.hdp-on{color:#000}
+.hdp-H{background:var(--accent)}
+.hdp-D{background:var(--ok)}
+.hdp-P{background:var(--warn)}
+.hdp-off{background:#2c394d;color:#8da0b5}
+
+.risk-badge{
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+  color:#000;
+}
+.risk-low{background:var(--ok)}
+.risk-med{background:var(--warn)}
+.risk-high{background:var(--bad)}
+
+.conflict-badge{
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+  color:#000;
+}
+.conf-low{background:var(--ok)}
+.conf-med{background:var(--warn)}
+.conf-high{background:var(--bad)}
+
+.policy-flag{
+  display:inline-block;
+  padding:1px 7px;
+  border-radius:999px;
+  font-size:10px;
+  border:1px solid var(--warn);
+  color:var(--warn);
+  margin-left:6px;
+}
+
+.sticky{
+  position:sticky; top:8px; z-index:9;
+}
 </style>
 </head>
 
 <body>
-<h2>Recap Km-lite v2.3 (Multi-source · Tf-idf · Hdp · Risk · C1–C15)</h2>
+<h1>Km-lite v2.3 (ReliefWeb + Acled map + Partner filter)</h1>
 
-<textarea rows="2" style="width:100%" readonly class="small">
-Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Principe, Somalia, South Sudan, Zimbabwe, Armenia, Iran, Jordan, Lebanon, Palestine, Syria, Yemen, Papua New Guinea, Solomon Islands, Timor-Leste
-</textarea>
+<div class="panel sticky">
+  <div class="flex" style="justify-content:space-between;align-items:flex-start">
+    <div class="flex" style="gap:10px;align-items:center">
+      <label>Recent Years</label>
+      <input id="years" type="number" value="10" min="1" max="30" style="width:90px"/>
 
-<div class="panel" style="margin-top:10px">
-  <div class="flex">
-    <label>Recent Years</label>
-    <input id="rw-years" type="number" value="10" min="1" style="width:90px"/>
-    <label>Max Items</label>
-    <input id="rw-limit" type="number" value="1000" min="1" max="1000" style="width:110px"/>
-    <button id="open-country" title="Country Filter">Country Filter</button>
-    <span id="country-chip" class="badge">All 20 Countries</span>
-    <button id="btn-fetch-all">Fetch</button>
-    <span id="rw-status" class="small"></span>
-  </div>
+      <label>Max Items</label>
+      <input id="max-items" type="number" value="1000" min="50" max="5000" style="width:110px"/>
 
-  <div class="flex" style="margin-top:10px">
-    <label class="small" style="min-width:120px">Proxy Base Url</label>
-    <input id="proxy-base" placeholder="http://127.0.0.1:8787/?url=" style="flex:1;min-width:260px"/>
-    <span class="small">Needed For Ucdp / Fts / Dtm In Browser</span>
-  </div>
+      <button id="open-country">Country</button>
+      <span id="country-chip" class="badge">All Countries</span>
 
-  <div class="flex" style="margin-top:10px;align-items:flex-start">
-    <div style="min-width:220px">
-      <div class="small" style="font-weight:700;margin-bottom:6px">Sources</div>
-      <label class="small"><input type="checkbox" id="src-reliefweb" checked> ReliefWeb</label><br/>
-      <label class="small"><input type="checkbox" id="src-ucdp" checked> Ucdp (Needs Proxy)</label><br/>
-      <label class="small"><input type="checkbox" id="src-fts" checked> Ocha Fts (Hpc Tools)</label><br/>
-      <label class="small"><input type="checkbox" id="src-worldbank"> World Bank</label><br/>
-      <label class="small"><input type="checkbox" id="src-unsdg"> Un Sdg</label><br/>
-      <label class="small"><input type="checkbox" id="src-dtm"> Iom Dtm (Needs Proxy)</label><br/>
+      <label>Partner Organization</label>
+      <select id="partner-filter" style="min-width:220px">
+        <option value="">All Partners</option>
+      </select>
+
+      <label>Proxy Base</label>
+      <input id="proxy-base" class="mono" style="min-width:320px"
+             value="http://127.0.0.1:8787/?url="/>
+
+      <button id="btn-fetch">Fetch</button>
+      <span id="status" class="small"></span>
     </div>
 
-    <div style="flex:1">
-      <div class="small" style="font-weight:700;margin-bottom:6px">Api Endpoints (Editable)</div>
-      <div class="small">Fts Base</div>
-      <input id="fts-base" value="https://api.hpc.tools/v2/public/fts" style="width:100%"/>
-      <div class="small" style="margin-top:6px">Ucdp Base</div>
-      <input id="ucdp-base" value="https://ucdpapi.pcr.uu.se/api/gedevents/25.1" style="width:100%"/>
-      <div class="small" style="margin-top:6px">Un Sdg Base</div>
-      <input id="unsdg-base" value="https://unstats.un.org/SDGAPI/v1/sdg" style="width:100%"/>
-      <div class="small" style="margin-top:6px">World Bank Base</div>
-      <input id="wb-base" value="https://api.worldbank.org/v2" style="width:100%"/>
-      <div class="small" style="margin-top:6px">Dtm Base (Placeholder)</div>
-      <input id="dtm-base" value="https://dtm.iom.int" style="width:100%"/>
-      <div class="small" style="margin-top:6px;color:#9fb2c8">
-        Note: Some Providers Do Not Allow Direct Browser Calls (Cors). Use Proxy When Needed.
+    <div class="flex" style="gap:10px;align-items:center">
+      <label class="small" style="margin-right:4px">Sources</label>
+      <label class="small"><input type="checkbox" id="src-rw" checked> ReliefWeb</label>
+      <label class="small"><input type="checkbox" id="src-acled" checked> Acled</label>
+      <input id="acled-email" placeholder="Acled Email" style="width:170px"/>
+      <input id="acled-key" placeholder="Acled Key" style="width:170px"/>
+      <button id="btn-clear-country" title="Clear active country">Clear Country</button>
+    </div>
+  </div>
+
+  <div class="small" style="margin-top:8px">
+    Click a country tile to filter table + map. Proxy required for Acled on GitHub Pages.
+  </div>
+</div>
+
+<div class="grid2" style="margin-top:10px">
+  <div class="panel">
+    <div class="flex" style="justify-content:space-between">
+      <div class="small"><strong>Map</strong> (Acled event points)</div>
+      <div class="flex">
+        <span class="badge" id="active-country-badge">Active: None</span>
+        <label class="small"><input type="checkbox" id="map-acled" checked> Show Acled</label>
+      </div>
+    </div>
+    <div id="map" style="margin-top:10px"></div>
+  </div>
+
+  <div class="panel">
+    <div class="small"><strong>Summary</strong> (Window: 24 months)</div>
+    <div class="kv" style="margin-top:10px">
+      <div><div class="k">Documents</div><div class="v" id="kv-docs">—</div></div>
+      <div><div class="k">High Risk Docs</div><div class="v" id="kv-high">—</div></div>
+      <div><div class="k">Conflict Heat ≥ 4 (Docs)</div><div class="v" id="kv-c4">—</div></div>
+      <div><div class="k">Acled Events</div><div class="v" id="kv-ev">—</div></div>
+    </div>
+
+    <div class="small" style="margin-top:12px"><strong>Country Dashboard</strong></div>
+    <div class="flex small" style="margin-top:6px; justify-content:space-between">
+      <div>Metric</div>
+      <div class="flex">
+        <select id="dash-metric">
+          <option value="risk">Risk (Docs)</option>
+          <option value="heat">Conflict Heat (Docs)</option>
+          <option value="acled">Acled Events</option>
+        </select>
+        <select id="dash-agg">
+          <option value="mean">Mean</option>
+          <option value="max">Max</option>
+        </select>
+        <select id="dash-sort">
+          <option value="desc">Desc</option>
+          <option value="name">Name</option>
+        </select>
+        <button id="dash-recalc">Recalc</button>
       </div>
     </div>
 
-    <div style="min-width:240px">
-      <div class="small" style="font-weight:700;margin-bottom:6px">Status</div>
-      <div class="small">ReliefWeb <span id="st-reliefweb" class="status st-warn">Idle</span></div>
-      <div class="small">Ucdp <span id="st-ucdp" class="status st-warn">Idle</span></div>
-      <div class="small">Fts <span id="st-fts" class="status st-warn">Idle</span></div>
-      <div class="small">World Bank <span id="st-wb" class="status st-warn">Idle</span></div>
-      <div class="small">Un Sdg <span id="st-unsdg" class="status st-warn">Idle</span></div>
-      <div class="small">Iom Dtm <span id="st-dtm" class="status st-warn">Idle</span></div>
-    </div>
+    <div id="dash-grid" class="dash-grid" style="margin-top:10px"></div>
   </div>
 </div>
 
-<div id="savebar" class="stickybar flex" style="justify-content:space-between">
-  <div class="small">Select Rows → Save To Notes. Minimal Text, Practical Signals.</div>
-  <div class="flex">
-    <button id="btn-risk-narrative">Generate 30-day Risk Summary</button>
-    <button id="rw-to-notes">Save Selected To Notes</button>
-  </div>
-</div>
-
-<div class="panel">
-  <div class="flex" style="justify-content:space-between;align-items:center">
-    <div class="small"><strong>Country Risk Dashboard</strong> (Last 24 Months)</div>
+<div class="panel" style="margin-top:10px">
+  <div class="flex" style="justify-content:space-between">
+    <div class="small"><strong>ReliefWeb Table</strong></div>
     <div class="flex">
-      <select id="dash-metric">
-        <option value="riskScore">Risk</option>
-        <option value="conflictIndex">Conflict Heat</option>
-      </select>
-      <select id="dash-agg">
-        <option value="mean">Mean</option>
-        <option value="max">Max</option>
-      </select>
-      <select id="dash-sort">
-        <option value="desc">Value Desc</option>
-        <option value="name">Country Name</option>
-      </select>
-      <button id="dash-recalc">Recalc</button>
+      <input id="table-q" placeholder="Search" style="min-width:220px"/>
+      <button id="btn-save-notes">Save Selected</button>
+      <button id="btn-notes-open">Notes</button>
     </div>
   </div>
-  <div class="kv">
-    <div><div class="k">Docs (24 Months)</div><div class="v" id="kv-n">—</div></div>
-    <div><div class="k">High Risk Docs</div><div class="v" id="kv-high">—</div></div>
-    <div><div class="k">Conflict Heat ≥ 4</div><div class="v" id="kv-c4">—</div></div>
-  </div>
-  <div id="dash-grid" class="dash-grid" style="margin-top:10px"></div>
+  <div id="rw-results" style="margin-top:10px; max-height:44vh; overflow:auto;
+        border:1px solid rgba(255,255,255,.10); padding:.6rem; border-radius:14px;
+        background:rgba(15,22,32,.18)"></div>
 </div>
 
-<div id="rw-results"></div>
-<div id="risk-narrative-box" class="panel small" style="display:none; white-space:pre-wrap; margin-top:12px"></div>
-
-<hr/>
-<div id="notes-panel" class="panel">
-  <div class="flex">
-    <strong>Saved Notes</strong>
-    <input id="notes-q" placeholder="Search" style="flex:1;min-width:180px"/>
-    <button id="notes-refresh">Refresh</button>
-    <button id="notes-clear" title="Delete All Notes">Clear</button>
+<!-- Notes modal -->
+<div id="notes-modal" class="modal">
+  <div id="summary-box">
+    <div class="flex" style="justify-content:space-between;align-items:center">
+      <div style="font-weight:700;font-size:15px">Notes</div>
+      <button id="notes-close">Close</button>
+    </div>
+    <div class="flex" style="margin-top:10px">
+      <input id="notes-q" placeholder="Search notes" style="flex:1;min-width:200px"/>
+      <button id="notes-refresh">Refresh</button>
+      <button id="notes-clear">Clear</button>
+    </div>
+    <div id="notes-list" class="small" style="margin-top:10px"></div>
   </div>
-  <div id="notes-list" class="small" style="margin-top:10px"></div>
 </div>
 
+<!-- Summary modal -->
 <div id="summary-modal" class="modal">
   <div id="summary-box">
-    <div id="summary-title" style="font-weight:780;font-size:16px;margin-bottom:10px;"></div>
-    <div class="small" id="summary-meta" style="margin-bottom:6px"></div>
-    <div id="summary-hdp" style="margin:10px 0"></div>
+    <div id="summary-title" style="font-weight:700;font-size:16px;margin-bottom:10px;"></div>
+    <div class="small" id="summary-meta" style="margin-bottom:8px"></div>
+    <div id="summary-badges" style="margin:10px 0"></div>
     <div id="summary-content" style="font-size:14px;line-height:1.6;"></div>
     <div style="margin-top:14px;text-align:right"><button id="summary-close">Close</button></div>
   </div>
 </div>
 
+<!-- Country filter modal -->
 <div id="country-modal" class="modal">
   <div id="country-box">
     <div class="flex" style="justify-content:space-between">
       <strong>Country Filter</strong>
-      <div class="small">Select → Apply → Fetch</div>
+      <div class="small">Select and apply</div>
     </div>
     <div class="country-grid" id="country-grid"></div>
     <div class="flex" style="justify-content:flex-end;margin-top:10px">
@@ -269,32 +344,15 @@ Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Pr
   </div>
 </div>
 
-<div id="country-detail-modal" class="modal">
-  <div id="country-box" style="width:min(920px,92vw)">
-    <div class="flex" style="justify-content:space-between;align-items:flex-start">
-      <div>
-        <div id="cd-title" style="font-weight:780;font-size:16px"></div>
-        <div id="cd-sub" class="small" style="margin-top:4px"></div>
-      </div>
-      <button id="cd-close">Close</button>
-    </div>
-    <div id="cd-kv" class="kv"></div>
-
-    <div class="panel" style="margin-top:10px">
-      <div class="small" style="font-weight:700;margin-bottom:8px">Recent Items (Top 20)</div>
-      <div id="cd-list" class="small"></div>
-    </div>
-
-    <div class="panel" style="margin-top:10px">
-      <div class="small" style="font-weight:700;margin-bottom:8px">External Signals (Quick Check)</div>
-      <div id="cd-ext" class="small" style="color:#9fb2c8">—</div>
-    </div>
-  </div>
-</div>
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin="">
+</script>
 
 <script>
 /* =============================
-   Utils
+   Utilities
 ============================= */
 function escapeHTML(s){
   return String(s||'')
@@ -306,49 +364,65 @@ function escapeHTML(s){
 }
 function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
 
-function setStatus(id, kind, text){
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.classList.remove('st-ok','st-warn','st-bad');
-  el.classList.add(kind==='ok'?'st-ok':kind==='bad'?'st-bad':'st-warn');
-  el.textContent = text;
+function firstCountryName(countryField){
+  const c = (countryField||'').split(',')[0].trim();
+  return c || 'Unknown';
 }
 
 function getProxyBase(){
-  return (document.getElementById('proxy-base').value || '').trim();
+  const v = (document.getElementById('proxy-base').value || '').trim();
+  return v.endsWith('?url=') || v.endsWith('?url=') ? v : v; // trust user input
 }
 function proxify(url){
-  const p = getProxyBase();
-  if(!p) return null;
-  return p + encodeURIComponent(url);
+  return getProxyBase() + encodeURIComponent(url);
+}
+
+function nowMinusDays(days){ return new Date(Date.now() - days*86400000); }
+function isoDate(d){
+  const x = new Date(d);
+  const yyyy = x.getUTCFullYear();
+  const mm = String(x.getUTCMonth()+1).padStart(2,'0');
+  const dd = String(x.getUTCDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 /* =============================
-   Constants
+   Constants: RECAP countries
 ============================= */
-const APPNAME = "HyunKim+recap_km_lite+a5Ttg7U8";
-const DB_KEY  = "km-lite-db";
+const APPNAME   = "HyunKim+recap_km_lite+a5Ttg7U8";
+const DB_KEY    = "km-lite-db";
 
-const RECAP_NAMES = [
-  'Burundi','Central African Republic','Comoros','Guinea','Kenya','Mali',
-  'Sao Tome and Principe','Somalia','South Sudan','Zimbabwe',
-  'Armenia','Iran','Jordan','Lebanon','Palestine','Syria','Yemen',
-  'Papua New Guinea','Solomon Islands','Timor-Leste'
+/* 20 countries */
+const RECAP = [
+  {name:'Burundi', iso3:'BDI', acledIso:'108', lat:-3.36, lon:29.92},
+  {name:'Central African Republic', iso3:'CAF', acledIso:'140', lat:6.61, lon:20.94},
+  {name:'Comoros', iso3:'COM', acledIso:'174', lat:-11.65, lon:43.33},
+  {name:'Guinea', iso3:'GIN', acledIso:'324', lat:9.95, lon:-9.70},
+  {name:'Kenya', iso3:'KEN', acledIso:'404', lat:0.02, lon:37.91},
+  {name:'Mali', iso3:'MLI', acledIso:'466', lat:17.57, lon:-3.99},
+  {name:'Sao Tome and Principe', iso3:'STP', acledIso:'678', lat:0.19, lon:6.61},
+  {name:'Somalia', iso3:'SOM', acledIso:'706', lat:5.15, lon:46.20},
+  {name:'South Sudan', iso3:'SSD', acledIso:'728', lat:7.86, lon:29.69},
+  {name:'Zimbabwe', iso3:'ZWE', acledIso:'716', lat:-19.02, lon:29.15},
+  {name:'Armenia', iso3:'ARM', acledIso:'051', lat:40.07, lon:45.04},
+  {name:'Iran', iso3:'IRN', acledIso:'364', lat:32.43, lon:53.69},
+  {name:'Jordan', iso3:'JOR', acledIso:'400', lat:30.59, lon:36.24},
+  {name:'Lebanon', iso3:'LBN', acledIso:'422', lat:33.85, lon:35.86},
+  {name:'Palestine', iso3:'PSE', acledIso:'275', lat:31.95, lon:35.23},
+  {name:'Syria', iso3:'SYR', acledIso:'760', lat:34.80, lon:38.99},
+  {name:'Yemen', iso3:'YEM', acledIso:'887', lat:15.55, lon:48.52},
+  {name:'Papua New Guinea', iso3:'PNG', acledIso:'598', lat:-6.31, lon:143.95},
+  {name:'Solomon Islands', iso3:'SLB', acledIso:'090', lat:-9.65, lon:160.16},
+  {name:'Timor-Leste', iso3:'TLS', acledIso:'626', lat:-8.87, lon:125.73}
 ];
-const RECAP_ISO3 = [
-  'BDI','CAF','COM','GIN','KEN','MLI',
-  'STP','SOM','SSD','ZWE',
-  'ARM','IRN','JOR','LBN','PSE','SYR','YEM',
-  'PNG','SLB','TLS'
-];
-const RECAP_MAP = RECAP_NAMES.map((n,i)=>({name:n,iso3:RECAP_ISO3[i]}));
 
-let pickedISO3 = [];
-let currentItems = []; // ReliefWeb-derived items (core for dashboard)
-let extSignals = {};   // { iso3: { ucdp:{...}, fts:{...}, wb:{...}, unsdg:{...}, dtm:{...} } }
+let pickedISO3 = [];          // filter set
+let activeCountry = '';       // click-to-filter
+let currentReports = [];      // ReliefWeb reports (processed)
+let currentEvents = [];       // Acled events (processed)
 
 /* =============================
-   HDP + Tf-idf summary (same as your logic)
+   HDP binary
 ============================= */
 const HDP_DICT = {
   H:['emergency','relief','response','humanitarian','displacement','refugee','cholera','outbreak','famine','flood','earthquake','evacuation','cash assistance','wash cluster','rapid'],
@@ -371,6 +445,9 @@ function hbarHTML(score){
   return `<div>${hx}${dx}${px}</div>`;
 }
 
+/* =============================
+   TF-IDF summary (light)
+============================= */
 function summarizeText(text,maxSentences){
   maxSentences = maxSentences || 5;
   if(!text) return '';
@@ -415,10 +492,9 @@ function summarizeText(text,maxSentences){
       const idf=Math.log((N+1)/((df[w]||1)+1));
       sc += (tf[w]||0)*idf;
     });
-    const len=s.length;
-    const lenAdj=(len<40?0.85:(len>300?0.9:1));
-    return {i,score:sc*lenAdj};
+    return {i,score:sc};
   });
+
   scored.sort((a,b)=>b.score-a.score);
   scored.splice(maxSentences);
   scored.sort((a,b)=>a.i-b.i);
@@ -426,19 +502,44 @@ function summarizeText(text,maxSentences){
 }
 
 /* =============================
-   Risk / Conflict
+  Risk / Conflict from text (docs)
 ============================= */
 const RISK_DICT = {
-  security: ['security incident','armed group','militia','attack','shelling','airstrike','kidnapping','detention','harassment','checkpoint','intimidation','armed clashes','violence','threat'],
-  access: ['access constraint','access restriction','movement restriction','road closure','inaccessible','denied access','limited access','suspension of operations','evacuation of staff'],
-  political: ['coup','political crisis','election violence','crackdown','state of emergency','martial law','sanctions','diplomatic tension'],
-  logistics: ['supply disruption','pipeline break','stockout','shortage of supplies','transport disruption','logistical challenge','import restriction'],
-  climate: ['flood','drought','cyclone','typhoon','landslide','storm surge','heatwave','climate shock','extreme weather'],
-  partner: ['governance issue','mismanagement','corruption','fraud','misprocurement','partner capacity gap','weak management']
+  security: [
+    'security incident','armed group','militia','attack','shelling','airstrike','kidnapping',
+    'detention','harassment','checkpoint','intimidation','armed clashes','violence','threat'
+  ],
+  access: [
+    'access constraint','access restriction','movement restriction','road closure',
+    'inaccessible','denied access','limited access','suspension of operations','evacuation of staff'
+  ],
+  political: [
+    'coup','political crisis','election violence','crackdown','state of emergency',
+    'martial law','sanctions','diplomatic tension'
+  ],
+  logistics: [
+    'supply disruption','pipeline break','stockout','shortage of supplies',
+    'transport disruption','logistical challenge','import restriction'
+  ],
+  climate: [
+    'flood','drought','cyclone','typhoon','landslide','storm surge','heatwave',
+    'climate shock','extreme weather'
+  ],
+  partner: [
+    'governance issue','mismanagement','corruption','fraud','misprocurement',
+    'partner capacity gap','weak management'
+  ]
 };
-const POLICY_TERMS = ['new regulation','regulation change','policy revision','policy change','government decree','government directive','ministerial order','new law','legislation','suspension order','ban on','prohibited','visa restriction','border closure'];
-const CONFLICT_TERMS = ['armed clashes','clashes','fighting','battle','frontline','shelling','airstrike','armed group','militia','non-state armed','violence','attack','ambush','raid','displacement due to conflict','conflict-affected','hostilities'];
-
+const POLICY_TERMS = [
+  'new regulation','regulation change','policy revision','policy change',
+  'government decree','government directive','ministerial order','new law',
+  'legislation','suspension order','ban on','prohibited','visa restriction','border closure'
+];
+const CONFLICT_TERMS = [
+  'armed clashes','clashes','fighting','battle','frontline','shelling','airstrike',
+  'armed group','militia','non-state armed','violence','attack','ambush','raid',
+  'displacement due to conflict','conflict-affected','hostilities'
+];
 function analyzeRiskAndConflict(text){
   const T = (text || '').toLowerCase();
   let rawScore = 0;
@@ -470,13 +571,7 @@ function analyzeRiskAndConflict(text){
   if(rawScore >= 18) level = 'high';
   else if(rawScore >= 8) level = 'med';
 
-  let impactBase = 1;
-  if(/security incident|armed group|attack|kidnapping|evacuation of staff|airstrike|shelling/.test(T)) impactBase += 2;
-  if(/access constraint|access restriction|denied access|suspension of operations/.test(T)) impactBase += 1;
-  if(/policy change|regulation change|sanctions|visa restriction|border closure/.test(T)) impactBase += 1;
-  if(rawScore > 20) impactBase += 1;
-  if(impactBase > 5) impactBase = 5;
-
+  // conflict heat 1~5 from term hits
   let conflictScore = 0;
   CONFLICT_TERMS.forEach(term=>{
     const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g');
@@ -489,10 +584,11 @@ function analyzeRiskAndConflict(text){
   else if(conflictScore >= 2) conflictIndex = 3;
   else if(conflictScore >= 1) conflictIndex = 2;
 
+  // policy flag
   let policy = false;
   POLICY_TERMS.forEach(term=>{ if(T.includes(term.toLowerCase())) policy = true; });
 
-  return { riskScore: rawScore, riskLevel: level, riskTags: tags, impactScore: impactBase, conflictIndex, policyFlag: policy };
+  return { riskScore: rawScore, riskLevel: level, riskTags: tags, conflictIndex, policyFlag: policy };
 }
 
 function renderRiskBadge(r){
@@ -512,26 +608,25 @@ function renderConflictBadge(idx){
 }
 
 /* =============================
-   C1–C15
+  C1~C15 classifier (same as v2.2)
 ============================= */
 const CODES = {
   C1:{name:'Project Overview & Context',core:['background','project overview','context analysis','needs assessment','맥락','배경'],related:['objective','goal','목표'],ref:['overview']},
   C2:{name:'Stakeholder Analysis',core:['stakeholder analysis','actor mapping','이해관계자'],related:['partner','community'],ref:['coordination']},
-  C3:{name:'Logic Model & Pathways',core:['theory of change','logic model','results chain','논리모형'],related:['outcome','impact','assumption'],ref:['logframe']},
+  C3:{name:'Logic Model & Results Pathway',core:['theory of change','logic model','results chain','논리모형'],related:['outcome','impact','assumption'],ref:['logframe']},
   C4:{name:'Implementation & Operations',core:['implementation plan','operational plan','운영 계획'],related:['workplan','sop'],ref:['project management']},
   C5:{name:'Monitoring & Evaluation',core:['monitoring and evaluation','m&e system','indicator framework','평가 계획'],related:['baseline','endline','data quality'],ref:['reporting']},
-  C6:{name:'Outputs / Outcomes',core:['outputs achieved','outcome'],related:['beneficiaries reached','coverage'],ref:['result']},
+  C6:{name:'Outputs & Outcomes',core:['outputs achieved','outcome'],related:['beneficiaries reached','coverage'],ref:['result']},
   C7:{name:'Impact',core:['impact evaluation','long-term impact','제도적 변화'],related:['behaviour change','policy change'],ref:['impact']},
   C8:{name:'Sustainability',core:['sustainability plan','exit strategy','지속가능성'],related:['scaling','handover'],ref:['continuity']},
-  C9:{name:'Cost-effectiveness',core:['cost-effectiveness','value for money','비용 효과성'],related:['unit cost','budget'],ref:['financial']},
+  C9:{name:'Cost Effectiveness',core:['cost-effectiveness','value for money','비용 효과성'],related:['unit cost','budget'],ref:['financial']},
   C10:{name:'Risk & Adaptation',core:['risk analysis','risk mitigation','contingency','리스크'],related:['adaptive management'],ref:['constraint']},
   C11:{name:'Gender & Inclusion',core:['gender analysis','psea','젠더'],related:['inclusion','disability'],ref:['leave no one behind']},
   C12:{name:'Governance & Accountability',core:['accountability','complaints mechanism','grievance'],related:['transparency'],ref:['governance']},
-  C13:{name:'Environment / Climate',core:['climate risk assessment','environmental impact','기후 위험'],related:['drr','resilience'],ref:['climate']},
-  C14:{name:'Learning & Scale',core:['lessons learned','good practices','교훈'],related:['case study','innovation'],ref:['takeaways']},
-  C15:{name:'Limitations / Recommendations',core:['limitations','recommendations','권고'],related:['bottlenecks','constraints'],ref:['way forward']}
+  C13:{name:'Environment & Climate',core:['climate risk assessment','environmental impact','기후 위험'],related:['drr','resilience'],ref:['climate']},
+  C14:{name:'Learning & Scale-up',core:['lessons learned','good practices','교훈'],related:['case study','innovation'],ref:['takeaways']},
+  C15:{name:'Limitations & Recommendations',core:['limitations','recommendations','권고'],related:['bottlenecks','constraints'],ref:['way forward']}
 };
-
 function classifyC15(text, topN){
   topN = topN || 3;
   if(!text) return [];
@@ -564,7 +659,7 @@ function renderC15Badges(arr){
 }
 
 /* =============================
-   DB
+  Notes DB
 ============================= */
 function getDB(){
   try{ return JSON.parse(localStorage.getItem(DB_KEY)||'{"notes":[]}'); }
@@ -572,44 +667,21 @@ function getDB(){
 }
 function setDB(db){ localStorage.setItem(DB_KEY,JSON.stringify(db)); }
 
-function migrateNotesIfNeeded(){
-  try{
-    const db=getDB();
-    let changed=false;
-    db.notes=(db.notes||[]).map(n=>{
-      if(!n.hdp){
-        const t=[n.title,n.summary,n.body].filter(Boolean).join(' ');
-        const sc=hdpScore(t); n.hdp=sc; n.hdpLabel=sc.label; changed=true;
-      }
-      if(!n.c15||!n.c15.length){
-        const t2=[n.title,n.summary,n.body].join(' ');
-        n.c15=classifyC15(t2,3); changed=true;
-      }
-      if(!n.risk){
-        const t3=[n.title,n.summary,n.body].join(' ');
-        n.risk=analyzeRiskAndConflict(t3); changed=true;
-      }
-      return n;
-    });
-    if(changed) setDB(db);
-  }catch(e){}
-}
-
 function renderNotes(filter){
   filter=(filter||'').toLowerCase();
   const box=document.getElementById('notes-list');
   const db=getDB();
   if(!db.notes.length){
-    box.innerHTML='<div class="small">No Saved Notes.</div>';
+    box.innerHTML='<div class="small">No notes.</div>';
     return;
   }
   let html='';
   db.notes.forEach(n=>{
-    const hay=[n.title,n.summary,n.country,n.hdpLabel]
+    const hay=[n.title,n.summary,n.country,n.source,n.hdpLabel]
       .concat((n.c15||[]).map(x=>x.code+' '+x.name))
       .concat(n.risk && n.risk.riskTags ? n.risk.riskTags : [])
       .join(' ').toLowerCase();
-    if(filter && hay.indexOf(filter)<0) return;
+    if(filter && !hay.includes(filter)) return;
 
     html+=`
       <div class="card">
@@ -621,9 +693,9 @@ function renderNotes(filter){
         <div style="margin:6px 0">${renderRiskBadge(n.risk)} ${renderConflictBadge(n.risk && n.risk.conflictIndex)}</div>
         <div style="margin:6px 0">${hbarHTML(n.hdp)}</div>
         <div class="small" style="margin:6px 0">${renderC15Badges(n.c15)}</div>
-        <div>${escapeHTML(n.summary || '') || '<span class="small">No Summary</span>'}</div>
+        <div>${escapeHTML(n.summary || '') || '<span class="small">No summary.</span>'}</div>
         <div class="flex" style="margin-top:10px;gap:8px">
-          ${n.url?`<a href="${escapeAttr(n.url)}" target="_blank" rel="noopener">Source Link</a>`:''}
+          ${n.url?`<a href="${escapeAttr(n.url)}" target="_blank" rel="noopener">Source</a>`:''}
           <button data-id="${escapeAttr(n.id)}" class="btn-del small">Delete</button>
         </div>
       </div>`;
@@ -636,18 +708,106 @@ function renderNotes(filter){
       const db2=getDB();
       db2.notes=db2.notes.filter(x=>x.id!==id);
       setDB(db2);
-      renderNotes(filter);
+      renderNotes(document.getElementById('notes-q').value);
     };
   });
 }
 
 /* =============================
-   Country Filter Modal
+  Map (Leaflet)
+============================= */
+let map, acledLayer, centroidLayer;
+function initMap(){
+  map = L.map('map', {zoomControl:true}).setView([10, 15], 2);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  acledLayer = L.layerGroup().addTo(map);
+  centroidLayer = L.layerGroup().addTo(map);
+}
+function clearMap(){
+  acledLayer.clearLayers();
+  centroidLayer.clearLayers();
+}
+
+function fitToActive(){
+  if(activeCountry){
+    const c = RECAP.find(x=>x.name===activeCountry);
+    if(c) map.setView([c.lat, c.lon], 5);
+    return;
+  }
+  // fit to events if exist
+  const pts = getFilteredEvents();
+  if(pts.length){
+    const bounds = L.latLngBounds(pts.map(e=>[e.lat, e.lon]));
+    map.fitBounds(bounds.pad(0.2));
+  } else {
+    map.setView([10, 15], 2);
+  }
+}
+
+function renderAcledPoints(){
+  clearMap();
+  if(!document.getElementById('map-acled').checked) return;
+
+  const evs = getFilteredEvents();
+
+  if(evs.length){
+    evs.forEach(e=>{
+      const r = Math.max(3, Math.min(10, 3 + Math.log10((e.fatalities||0)+1)*3));
+      const m = L.circleMarker([e.lat, e.lon], {
+        radius: r,
+        weight: 1,
+        color: '#ff8a7a',
+        fillColor: '#ff4f3d',
+        fillOpacity: 0.65
+      });
+
+      const date = e.date ? escapeHTML(e.date) : '';
+      const t = escapeHTML(e.event_type || '');
+      const sub = escapeHTML(e.sub_event_type || '');
+      const fat = (e.fatalities==null?'':String(e.fatalities));
+      m.bindPopup(`
+        <div style="font-size:13px;line-height:1.35">
+          <div style="font-weight:700">${escapeHTML(e.country)}</div>
+          <div class="small">${date}</div>
+          <div>${t}${sub?(' · '+sub):''}</div>
+          <div>Fatalities: ${fat}</div>
+          ${e.source?`<div class="small">${escapeHTML(e.source)}</div>`:''}
+        </div>
+      `);
+
+      m.addTo(acledLayer);
+    });
+  } else {
+    // show centroids (gray) when no event points
+    const countries = getActiveCountries();
+    countries.forEach(name=>{
+      const c = RECAP.find(x=>x.name===name);
+      if(!c) return;
+      L.circleMarker([c.lat, c.lon], {
+        radius: 6,
+        weight: 1,
+        color:'#8aa0bb',
+        fillColor:'#8aa0bb',
+        fillOpacity:0.22
+      }).bindTooltip(name).addTo(centroidLayer);
+    });
+  }
+
+  fitToActive();
+}
+
+/* =============================
+  Country filter modal
 ============================= */
 function openCountryModal(){
   const grid = document.getElementById('country-grid');
   let html = '';
-  RECAP_MAP.forEach(d=>{
+  RECAP.forEach(d=>{
     const checked = pickedISO3.includes(d.iso3) ? 'checked' : '';
     html += `
       <label style="display:flex;gap:8px;align-items:center;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:8px 10px;background:rgba(15,22,32,.25)">
@@ -662,649 +822,528 @@ function closeCountryModal(){ document.getElementById('country-modal').style.dis
 
 document.getElementById('open-country').onclick = openCountryModal;
 document.getElementById('country-close').onclick = closeCountryModal;
+
 document.getElementById('country-clear').onclick = function(){
   pickedISO3 = [];
-  document.getElementById('country-chip').textContent = 'All 20 Countries';
+  document.getElementById('country-chip').textContent = 'All Countries';
   closeCountryModal();
+  activeCountry = '';
+  updateActiveCountryBadge();
+  rerenderAll();
 };
+
 document.getElementById('country-apply').onclick = function(){
   const boxes = document.querySelectorAll('#country-grid input:checked');
   pickedISO3 = Array.from(boxes).map(b=>b.value);
   document.getElementById('country-chip').textContent =
-    pickedISO3.length ? (pickedISO3.length+' Countries Selected') : 'All 20 Countries';
+    pickedISO3.length ? (pickedISO3.length+' Selected') : 'All Countries';
   closeCountryModal();
+  // keep activeCountry if still allowed
+  if(activeCountry){
+    const iso3 = RECAP.find(x=>x.name===activeCountry)?.iso3;
+    if(iso3 && pickedISO3.length && !pickedISO3.includes(iso3)){
+      activeCountry = '';
+      updateActiveCountryBadge();
+    }
+  }
+  rerenderAll();
 };
 
+document.getElementById('btn-clear-country').onclick = ()=>{
+  activeCountry = '';
+  updateActiveCountryBadge();
+  rerenderAll();
+};
+
+function getActiveCountries(){
+  // country list respecting pickedISO3 filter
+  const allowed = pickedISO3.length
+    ? RECAP.filter(x=>pickedISO3.includes(x.iso3)).map(x=>x.name)
+    : RECAP.map(x=>x.name);
+
+  if(activeCountry) return allowed.includes(activeCountry) ? [activeCountry] : [];
+  return allowed;
+}
+function updateActiveCountryBadge(){
+  const el = document.getElementById('active-country-badge');
+  el.textContent = 'Active: ' + (activeCountry || 'None');
+  document.getElementById('active-country-badge').style.borderColor =
+    activeCountry ? 'rgba(58,163,255,.55)' : 'rgba(255,255,255,.12)';
+  document.getElementById('active-country-badge').style.color =
+    activeCountry ? '#cfe7ff' : 'var(--mut)';
+}
+
 /* =============================
-   Dashboard aggregation (ReliefWeb items)
+  Partner filter (auto from reports)
 ============================= */
-function getWindowedItems24m(){
-  const now = Date.now();
-  const since = now - 730*86400000;
-  return (currentItems||[]).filter(it=>{
-    const t = Date.parse(it.created);
-    return isNaN(t) ? true : (t>=since);
+function normalizePartnerName(s){
+  return (s||'').trim();
+}
+function rebuildPartnerDropdown(){
+  const sel = document.getElementById('partner-filter');
+  const current = sel.value;
+
+  const partners = new Set();
+  currentReports.forEach(it=>{
+    // it.source is a comma-joined list; split
+    (it.source||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(p=>partners.add(p));
+  });
+
+  const arr = Array.from(partners).sort((a,b)=>a.localeCompare(b));
+  sel.innerHTML = `<option value="">All Partners</option>` + arr.map(p=>
+    `<option value="${escapeAttr(p)}">${escapeHTML(p)}</option>`
+  ).join('');
+
+  // restore selection if still present
+  if(current && arr.includes(current)) sel.value = current;
+}
+document.getElementById('partner-filter').onchange = ()=> rerenderAll();
+
+/* =============================
+  Window 24 months filter helper
+============================= */
+function inLast24m(dateStr){
+  const t = Date.parse(dateStr);
+  if(isNaN(t)) return true;
+  return t >= (Date.now() - 730*86400000);
+}
+
+/* =============================
+  Data getters with filters
+============================= */
+function getFilteredReports(){
+  const partner = document.getElementById('partner-filter').value || '';
+  const q = (document.getElementById('table-q').value || '').toLowerCase();
+
+  const allowedCountries = new Set(getActiveCountries());
+
+  return (currentReports||[]).filter(it=>{
+    const c = firstCountryName(it.country);
+    if(!allowedCountries.has(c)) return false;
+
+    if(partner){
+      const src = (it.source||'');
+      // exact contains match is fine
+      if(!src.split(',').map(x=>x.trim()).includes(partner)) return false;
+    }
+
+    if(q){
+      const hay = [
+        it.title,it.country,it.source,it.theme,it.type,
+        it.hdp && it.hdp.label,
+        (it.c15||[]).map(x=>x.code+' '+x.name).join(' '),
+        it.risk && it.risk.riskTags ? it.risk.riskTags.join(' ') : ''
+      ].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
   });
 }
 
-function aggregateByCountry(items, metric, agg){
-  const buckets = {};
-  items.forEach(it=>{
-    const country = (it.country||'').split(',')[0].trim() || 'Unknown';
-    const v = (metric==='conflictIndex')
-      ? (it.conflictIndex ?? (it.risk && it.risk.conflictIndex))
-      : (it.riskScore ?? (it.risk && it.risk.riskScore));
-    if(!buckets[country]) buckets[country]=[];
-    if(v!=null && isFinite(v)) buckets[country].push(Number(v));
-  });
+function getFilteredEvents(){
+  const allowedCountries = new Set(getActiveCountries());
+  return (currentEvents||[]).filter(e=> allowedCountries.has(e.country));
+}
 
-  const countries = (pickedISO3.length
-    ? RECAP_MAP.filter(x => pickedISO3.includes(x.iso3)).map(x => x.name)
-    : RECAP_NAMES.slice()
+/* =============================
+  Dashboard aggregation
+============================= */
+function computeDocStats24m(reports){
+  const r24 = reports.filter(it=>inLast24m(it.created));
+  const docs = r24.length;
+  const high = r24.filter(it=>it.risk && it.risk.riskLevel==='high').length;
+  const c4   = r24.filter(it=> (it.risk && it.risk.conflictIndex>=4)).length;
+  const riskVals = r24.map(it=>it.riskScore).filter(v=>v!=null && isFinite(v));
+  const heatVals = r24.map(it=>it.risk && it.risk.conflictIndex).filter(v=>v!=null && isFinite(v));
+  return {docs, high, c4, riskVals, heatVals};
+}
+
+function computeAcledStats24m(events){
+  const e24 = events.filter(e=>inLast24m(e.date));
+  return {events: e24.length};
+}
+
+function setKV(){
+  const reports = getFilteredReports();
+  const events  = getFilteredEvents();
+
+  const ds = computeDocStats24m(reports);
+  const es = computeAcledStats24m(events);
+
+  document.getElementById('kv-docs').textContent = ds.docs.toString();
+  document.getElementById('kv-high').textContent = ds.high.toString();
+  document.getElementById('kv-c4').textContent = ds.c4.toString();
+  document.getElementById('kv-ev').textContent = es.events.toString();
+}
+
+function aggregateCountryRows(){
+  const metric = document.getElementById('dash-metric').value; // risk|heat|acled
+  const agg    = document.getElementById('dash-agg').value;    // mean|max
+  const sort   = document.getElementById('dash-sort').value;   // desc|name
+
+  const allowed = getActiveCountries();
+  // NOTE: If activeCountry set, tiles should still show all allowed countries, not only active one.
+  // Requirement is "click country -> filter". So tiles can either keep all or show filtered.
+  // We'll keep showing allowed list (pickedISO3), but active filter still applies to table/map/kv.
+  // To avoid confusion, when activeCountry is set, we still show all tiles but highlight active.
+  const tileCountries = (pickedISO3.length
+    ? RECAP.filter(x=>pickedISO3.includes(x.iso3)).map(x=>x.name)
+    : RECAP.map(x=>x.name)
   );
 
-  return countries.map(c=>{
-    const arr=buckets[c]||[];
+  // bucket values per country in last 24m
+  const buckets = {};
+  if(metric==='acled'){
+    const evs = (currentEvents||[]).filter(e=>inLast24m(e.date));
+    evs.forEach(e=>{
+      if(!buckets[e.country]) buckets[e.country]=[];
+      buckets[e.country].push(1);
+    });
+  } else {
+    const reps = (currentReports||[]).filter(r=>inLast24m(r.created));
+    reps.forEach(r=>{
+      const c = firstCountryName(r.country);
+      if(!buckets[c]) buckets[c]=[];
+      const v = (metric==='heat') ? (r.risk?.conflictIndex ?? null) : (r.risk?.riskScore ?? null);
+      if(v!=null && isFinite(v)) buckets[c].push(Number(v));
+    });
+  }
+
+  let rows = tileCountries.map(c=>{
+    const arr = buckets[c]||[];
     let value=null;
     if(arr.length){
-      if(agg==='max') value=Math.max(...arr);
-      else value=arr.reduce((a,b)=>a+b,0)/arr.length;
+      value = (agg==='max') ? Math.max(...arr) : (arr.reduce((a,b)=>a+b,0)/arr.length);
+      // For acled metric, mean/max are same-ish but keep consistent
     }
     return {country:c, value, n:arr.length};
   });
-}
-
-function renderDashboardTiles(){
-  const metric = document.getElementById('dash-metric').value;
-  const agg    = document.getElementById('dash-agg').value;
-  const sort   = document.getElementById('dash-sort').value;
-
-  const items24 = getWindowedItems24m();
-
-  const total = items24.length;
-  const high = items24.filter(it=> (it.risk && it.risk.riskLevel==='high')).length;
-  const c4 = items24.filter(it=> (it.conflictIndex>=4)).length;
-  document.getElementById('kv-n').textContent = total.toString();
-  document.getElementById('kv-high').textContent = high.toString();
-  document.getElementById('kv-c4').textContent = c4.toString();
-
-  const rows = aggregateByCountry(items24, metric, agg);
-  let arr = rows.slice();
 
   if(sort==='name'){
-    arr.sort((a,b)=>a.country.localeCompare(b.country));
-  }else{
-    arr.sort((a,b)=>{
+    rows.sort((a,b)=>a.country.localeCompare(b.country));
+  } else {
+    rows.sort((a,b)=>{
       const av=(a.value==null?-Infinity:a.value);
       const bv=(b.value==null?-Infinity:b.value);
       return bv-av;
     });
   }
 
-  const vals = arr.map(x=>x.value).filter(v=>v!=null && isFinite(v));
+  return rows;
+}
+
+function renderDashboardTiles(){
+  const rows = aggregateCountryRows();
+  const metric = document.getElementById('dash-metric').value;
+
+  const vals = rows.map(x=>x.value).filter(v=>v!=null && isFinite(v));
   const vmax = vals.length ? Math.max(...vals) : 0;
 
   const grid = document.getElementById('dash-grid');
-  if(!grid) return;
 
-  if(!currentItems.length){
+  if(!currentReports.length && !currentEvents.length){
     grid.innerHTML = `<div class="small" style="grid-column:1/-1;color:#9fb2c8">
-      No Data. Click <b>Fetch</b>.
+      No data. Click <b>Fetch</b>.
     </div>`;
     return;
   }
 
-  grid.innerHTML = arr.map(x=>{
+  const unit = (metric==='risk') ? 'Risk' : (metric==='heat' ? 'Heat' : 'Events');
+
+  grid.innerHTML = rows.map(x=>{
     const v = x.value;
-    const pct = (v==null || vmax<=0) ? 0 : Math.max(0, Math.min(100, (v/vmax)*100));
     const vtxt = (v==null) ? '—' : (Math.round(v*10)/10).toString();
-    const unit = (metric==='conflictIndex') ? 'Heat' : 'Risk';
-    const sub = `24m ${agg} · ${unit} · n=${x.n}`;
+    const sub = `24m · ${unit} · n=${x.n}`;
+    const isActive = activeCountry && (x.country===activeCountry);
+    const border = isActive ? 'rgba(58,163,255,.65)' : 'rgba(255,255,255,.10)';
     return `
-      <div class="dash-tile" data-country="${escapeAttr(x.country)}">
+      <div class="dash-tile" data-country="${escapeAttr(x.country)}" style="border-color:${border}">
         <div class="dash-name">${escapeHTML(x.country)}</div>
         <div class="dash-sub">${escapeHTML(sub)}</div>
         <div class="dash-val">${escapeHTML(vtxt)}</div>
-        <div class="mini-bar"><div style="width:${pct}%"></div></div>
       </div>
     `;
   }).join('');
 
+  // requirement #1: country click -> filter that country items
   grid.querySelectorAll('.dash-tile').forEach(el=>{
-    el.onclick = ()=> openCountryDetail(el.dataset.country);
+    el.onclick = ()=>{
+      const c = el.dataset.country;
+      activeCountry = (activeCountry===c) ? '' : c; // toggle
+      updateActiveCountryBadge();
+      rerenderAll();
+    };
   });
 }
 
 /* =============================
-   Country detail + external signals display
+  ReliefWeb fetch
 ============================= */
-function openCountryDetail(countryName){
-  const items = (currentItems||[])
-    .filter(it => ((it.country||'').split(',')[0].trim()||'Unknown') === countryName)
-    .sort((a,b)=> (Date.parse(b.created)||0) - (Date.parse(a.created)||0));
+async function fetchReliefWeb(){
+  const years = Number(document.getElementById('years').value || 10);
+  const limit = Math.min(Number(document.getElementById('max-items').value || 1000), 5000);
 
-  const items24 = items.filter(it=>{
-    const t = Date.parse(it.created);
-    if(isNaN(t)) return true;
-    return t >= (Date.now() - 730*86400000);
+  const daySpan = Math.max(1, Math.round(years*365));
+  const sinceMillis = Date.now() - daySpan*86400000;
+
+  const iso3ForQuery = pickedISO3.length ? pickedISO3 : RECAP.map(x=>x.iso3);
+  const url='https://api.reliefweb.int/v1/reports?appname='+encodeURIComponent(APPNAME);
+
+  const body={
+    limit:limit,
+    offset:0,
+    filter:{
+      operator:'AND',
+      conditions:[
+        {field:'country.iso3',value:iso3ForQuery}
+      ]
+    },
+    fields:{
+      include:[
+        'id','title','url','body','body-html','country',
+        'source','theme','disaster_type','date.created'
+      ]
+    },
+    sort:['date.created:desc']
+  };
+
+  const res=await fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
   });
 
-  const n = items24.length;
-  const high = items24.filter(it=>it.risk && it.risk.riskLevel==='high').length;
-  const med  = items24.filter(it=>it.risk && it.risk.riskLevel==='med').length;
-  const c4   = items24.filter(it=>it.conflictIndex>=4).length;
+  if(!res.ok){
+    const t = await res.text().catch(()=> '');
+    throw new Error(`ReliefWeb HTTP ${res.status}: ${t.slice(0,300)}`);
+  }
 
-  const avgRisk = (() => {
-    const xs = items24.map(it=>it.riskScore).filter(v=>v!=null && isFinite(v));
-    return xs.length ? (xs.reduce((a,b)=>a+b,0)/xs.length) : null;
-  })();
+  const json=await res.json();
+  const data=json.data || [];
 
-  const avgHeat = (() => {
-    const xs = items24.map(it=>it.conflictIndex).filter(v=>v!=null && isFinite(v));
-    return xs.length ? (xs.reduce((a,b)=>a+b,0)/xs.length) : null;
-  })();
+  const items = data.map(r=>{
+    const f=r.fields||{};
+    const rawHtml=(f['body-html']||'')
+      .replace(/<style[\s\S]*?<\/style>/gi,' ')
+      .replace(/<[^>]+>/g,' ');
+    const bodyText=(f.body && String(f.body).trim().length>0) ? f.body : rawHtml;
 
-  document.getElementById('cd-title').textContent = countryName;
-  document.getElementById('cd-sub').textContent = `Last 24 Months (Docs: ${n})`;
+    const metaTxt=[
+      f.title||'',
+      (f.theme||[]).map(t=>t.name).join(', '),
+      (f.disaster_type||[]).map(d=>d.name).join(', '),
+      (f.source||[]).map(s=>s.name).join(', '),
+      (f.country||[]).map(c=>c.name).join(', ')
+    ].join(' | ');
 
-  document.getElementById('cd-kv').innerHTML = `
-    <div><div class="k">Mean Risk</div><div class="v">${avgRisk==null?'—':(Math.round(avgRisk*10)/10)}</div></div>
-    <div><div class="k">Mean Heat</div><div class="v">${avgHeat==null?'—':(Math.round(avgHeat*10)/10)}</div></div>
-    <div><div class="k">High/Med/Heat≥4</div><div class="v">${high}/${med}/${c4}</div></div>
+    const baseText = metaTxt + ' ' + bodyText;
+
+    const hdp = hdpScore(baseText);
+    const c15 = classifyC15(baseText,3);
+    const risk = analyzeRiskAndConflict(baseText);
+
+    return {
+      id:r.id,
+      title:f.title||'',
+      url:f.url||'',
+      created:f['date.created']||'',
+      country:(f.country||[]).map(c=>c.name).join(', '),
+      source:(f.source||[]).map(s=>s.name).join(', '),
+      theme:(f.theme||[]).map(t=>t.name).join(', '),
+      type:(f.disaster_type||[]).map(d=>d.name).join(', '),
+      body:bodyText,
+      hdp,
+      c15,
+      risk,
+      riskScore: risk.riskScore
+    };
+  }).filter(it=>{
+    const t = Date.parse(it.created);
+    return isNaN(t) ? true : (t>=sinceMillis);
+  });
+
+  return items;
+}
+
+/* =============================
+  Acled fetch (via proxy)
+  - event_date format: YYYY-MM-DD|YYYY-MM-DD
+  - pagination: page=1..N
+============================= */
+async function fetchAcled(){
+  const email = (document.getElementById('acled-email').value || '').trim();
+  const key   = (document.getElementById('acled-key').value || '').trim();
+
+  if(!email || !key){
+    // allow empty = no fetch
+    return [];
+  }
+
+  const years = Number(document.getElementById('years').value || 10);
+  const limit = Math.min(Number(document.getElementById('max-items').value || 1000), 5000);
+
+  // Keep Acled volume manageable: fetch up to 5 pages per country, 500 per page
+  const perPage = Math.min(500, Math.max(50, Math.floor(limit/5)));
+  const maxPages = 5;
+
+  const to = new Date();
+  const from = new Date(Date.now() - Math.round(years*365)*86400000);
+  const fromStr = isoDate(from);
+  const toStr = isoDate(to);
+
+  const countries = pickedISO3.length ? RECAP.filter(x=>pickedISO3.includes(x.iso3)) : RECAP.slice();
+
+  const all = [];
+  for(const c of countries){
+    for(let page=1; page<=maxPages; page++){
+      const params = new URLSearchParams({
+        key, email,
+        iso: c.acledIso,
+        event_date: `${fromStr}|${toStr}`,
+        page: String(page),
+        limit: String(perPage)
+      });
+
+      const realUrl = `https://api.acleddata.com/acled/read?${params.toString()}`;
+      const res = await fetch(proxify(realUrl));
+      if(!res.ok){
+        const t = await res.text().catch(()=> '');
+        throw new Error(`Acled HTTP ${res.status}: ${t.slice(0,200)}`);
+      }
+      const j = await res.json();
+
+      const data = j?.data || [];
+      if(!data.length) break;
+
+      data.forEach(e=>{
+        const lat = Number(e.latitude);
+        const lon = Number(e.longitude);
+        if(!isFinite(lat) || !isFinite(lon)) return;
+
+        all.push({
+          country: c.name,
+          iso3: c.iso3,
+          date: e.event_date || '',
+          lat, lon,
+          event_type: e.event_type || '',
+          sub_event_type: e.sub_event_type || '',
+          fatalities: (e.fatalities!=null ? Number(e.fatalities) : 0),
+          source: e.source || ''
+        });
+      });
+
+      // stop if fewer than perPage (likely end)
+      if(data.length < perPage) break;
+    }
+  }
+
+  // client-side cut to Max Items, newest first
+  all.sort((a,b)=> (Date.parse(b.date)||0) - (Date.parse(a.date)||0));
+  return all.slice(0, limit);
+}
+
+/* =============================
+  Render table
+============================= */
+function renderReportTable(){
+  const out = document.getElementById('rw-results');
+  const reports = getFilteredReports();
+
+  if(!reports.length){
+    out.innerHTML = `<div class="small">No reports in current filter.</div>`;
+    return;
+  }
+
+  let rows='';
+  reports.forEach((it,i)=>{
+    rows+=`
+      <tr>
+        <td style="width:40px"><input type="checkbox" class="rw-check" data-i="${i}"></td>
+        <td class="title-cell" style="cursor:pointer;text-decoration:underline">${escapeHTML(it.title)}</td>
+        <td>${escapeHTML(firstCountryName(it.country))}</td>
+        <td>${escapeHTML(it.source)}</td>
+        <td>${renderRiskBadge(it.risk)}</td>
+        <td>${renderConflictBadge(it.risk && it.risk.conflictIndex)}</td>
+        <td>${hbarHTML(it.hdp)}</td>
+        <td>${renderC15Badges(it.c15)}</td>
+        <td><a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">Link</a></td>
+      </tr>`;
+  });
+
+  out.innerHTML=`
+    <table>
+      <thead>
+        <tr>
+          <th></th><th>Title</th><th>Country</th><th>Source</th>
+          <th>Risk</th><th>Conflict</th><th>Hdp</th><th>C1~C15</th><th>Url</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
   `;
 
-  const top = items.slice(0,20);
-  if(!top.length){
-    document.getElementById('cd-list').innerHTML = `<div class="small">No Items.</div>`;
-  }else{
-    document.getElementById('cd-list').innerHTML = top.map(it=>{
-      const meta = [
-        (it.created ? String(it.created).slice(0,10) : ''),
-        it.source || '',
-        it.theme || '',
-        it.type || ''
-      ].filter(Boolean).join(' · ');
-
-      return `
-        <div class="card">
-          <div class="flex" style="justify-content:space-between;gap:10px">
-            <div style="font-weight:700">${escapeHTML(it.title)}</div>
-            <div class="small mono">${escapeHTML(String(it.created||'').slice(0,10))}</div>
-          </div>
-          <div class="small" style="margin-top:4px">${escapeHTML(meta)}</div>
-          <div style="margin-top:8px">
-            ${renderRiskBadge(it.risk)} ${renderConflictBadge(it.conflictIndex)} ${hbarHTML(it.hdp)}
-            <span class="small" style="margin-left:8px">${renderC15Badges(it.c15)}</span>
-          </div>
-          <div class="flex" style="margin-top:10px;gap:10px">
-            <a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">Source</a>
-            <button class="small btn-open-summary" data-id="${escapeAttr(it.id)}">Summary</button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    document.querySelectorAll('.btn-open-summary').forEach(btn=>{
-      btn.onclick=()=>{
-        const id = btn.dataset.id;
-        const it = (currentItems||[]).find(x=>String(x.id)===String(id));
-        if(it) openSummaryModal(it);
-      };
-    });
-  }
-
-  // external signals
-  const iso3 = (RECAP_MAP.find(x=>x.name===countryName)||{}).iso3;
-  const sig = (extSignals[iso3] || {});
-  const lines = [];
-  if(sig.ucdp){
-    if(sig.ucdp.ok) lines.push(`Ucdp: Ok (Events: ${sig.ucdp.n || 0})`);
-    else lines.push(`Ucdp: ${sig.ucdp.msg || '—'}`);
-  }
-  if(sig.fts){
-    if(sig.fts.ok) lines.push(`Fts: Ok (Records: ${sig.fts.n || 0})`);
-    else lines.push(`Fts: ${sig.fts.msg || '—'}`);
-  }
-  if(sig.wb){
-    if(sig.wb.ok) lines.push(`World Bank: Ok (${sig.wb.label || 'Data'})`);
-    else lines.push(`World Bank: ${sig.wb.msg || '—'}`);
-  }
-  if(sig.unsdg){
-    if(sig.unsdg.ok) lines.push(`Un Sdg: Ok (Sample: ${sig.unsdg.n || 0})`);
-    else lines.push(`Un Sdg: ${sig.unsdg.msg || '—'}`);
-  }
-  if(sig.dtm){
-    if(sig.dtm.ok) lines.push(`Iom Dtm: Ok (Sample: ${sig.dtm.n || 0})`);
-    else lines.push(`Iom Dtm: ${sig.dtm.msg || '—'}`);
-  }
-  document.getElementById('cd-ext').textContent = lines.length ? lines.join(' | ') : '—';
-
-  document.getElementById('country-detail-modal').style.display='flex';
+  // open summary
+  const shown = reports.slice(); // stable reference for this render
+  out.querySelectorAll('.title-cell').forEach((td,idx)=>{
+    td.onclick=()=> openSummaryModal(shown[idx]);
+  });
 }
-document.getElementById('cd-close').onclick=()=>{ document.getElementById('country-detail-modal').style.display='none'; };
 
 /* =============================
-   Summary modal
+  Summary modal
 ============================= */
 function openSummaryModal(it){
   const meta = [it.country,it.source,it.theme,it.type].filter(Boolean).join(' · ');
   const sumTxt =
     summarizeText(it.body,5) ||
     summarizeText(it.title+' '+meta,3) ||
-    'No Summary Available.';
-
-  const riskLine = renderRiskBadge(it.risk) + ' ' + renderConflictBadge(it.conflictIndex);
+    'No summary.';
 
   document.getElementById('summary-title').textContent=it.title;
   document.getElementById('summary-meta').textContent=meta;
-  document.getElementById('summary-hdp').innerHTML=
-    riskLine + '<div style="margin-top:6px">'+hbarHTML(it.hdp)+'</div>' +
-    (it.c15 && it.c15.length ? `<div class="small" style="margin-top:6px">${renderC15Badges(it.c15)}</div>` : '');
 
-  document.getElementById('summary-content').innerHTML=
+  document.getElementById('summary-badges').innerHTML =
+    `${renderRiskBadge(it.risk)} ${renderConflictBadge(it.risk && it.risk.conflictIndex)}
+     <div style="margin-top:6px">${hbarHTML(it.hdp)}</div>
+     <div class="small" style="margin-top:6px">${renderC15Badges(it.c15)}</div>`;
+
+  document.getElementById('summary-content').innerHTML =
     `<p>${escapeHTML(sumTxt)}</p>
      <hr/>
-     <p><a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">Open Source</a></p>
+     <p><a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">Open source</a></p>
      <p class="small" style="color:#9fb2c8">
-       ${(it.risk && it.risk.riskTags && it.risk.riskTags.length) ? 'Risk Tags: '+escapeHTML(it.risk.riskTags.join(', ')) : ''}
+       ${(it.risk && it.risk.riskTags && it.risk.riskTags.length) ? 'Risk tags: '+escapeHTML(it.risk.riskTags.join(', ')) : ''}
      </p>`;
 
   document.getElementById('summary-modal').style.display='flex';
 }
-document.getElementById('summary-close').onclick=function(){
-  document.getElementById('summary-modal').style.display='none';
+document.getElementById('summary-close').onclick=()=>{ document.getElementById('summary-modal').style.display='none'; };
+document.getElementById('summary-modal').onclick=(e)=>{ if(e.target.id==='summary-modal') e.currentTarget.style.display='none'; };
+
+/* =============================
+  Notes buttons
+============================= */
+document.getElementById('btn-notes-open').onclick = ()=>{
+  document.getElementById('notes-modal').style.display='flex';
+  renderNotes(document.getElementById('notes-q').value);
 };
-document.getElementById('summary-modal').onclick=function(e){
-  if(e.target.id==='summary-modal') e.currentTarget.style.display='none';
+document.getElementById('notes-close').onclick = ()=>{
+  document.getElementById('notes-modal').style.display='none';
 };
-window.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){
-    document.getElementById('summary-modal').style.display='none';
-    document.getElementById('country-modal').style.display='none';
-    document.getElementById('country-detail-modal').style.display='none';
-  }
-});
+document.getElementById('notes-modal').onclick=(e)=>{ if(e.target.id==='notes-modal') e.currentTarget.style.display='none'; };
 
-/* =============================
-   External fetch helpers
-============================= */
-async function fetchJsonSmart(url, needsProxy){
-  // needsProxy true → try proxy first; if no proxy, throw with clear message
-  const px = proxify(url);
-  if(needsProxy){
-    if(!px) throw new Error('Needs Proxy (Cors)');
-    const r = await fetch(px);
-    if(!r.ok) throw new Error('Http '+r.status);
-    return await r.json();
-  }else{
-    // try direct; if fails CORS in browser, caller sees error and status becomes Needs Proxy
-    const r = await fetch(url);
-    if(!r.ok) throw new Error('Http '+r.status);
-    return await r.json();
-  }
-}
+document.getElementById('notes-refresh').onclick=()=> renderNotes(document.getElementById('notes-q').value);
+document.getElementById('notes-clear').onclick=()=>{
+  if(!confirm('Clear all notes?')) return;
+  setDB({notes:[]});
+  renderNotes('');
+};
+document.getElementById('notes-q').addEventListener('input',(e)=> renderNotes(e.target.value));
 
-function getSelectedIso3(){
-  return pickedISO3.length ? pickedISO3 : RECAP_ISO3.slice();
-}
-function ensureSig(iso3){
-  if(!extSignals[iso3]) extSignals[iso3] = {};
-  return extSignals[iso3];
-}
-
-/* =============================
-   ReliefWeb fetch (core)
-============================= */
-async function rwFetch(){
-  const out = document.getElementById('rw-results');
-  const st  = document.getElementById('rw-status');
-  out.innerHTML='';
-  st.textContent='Fetching…';
-  document.getElementById('risk-narrative-box').style.display = 'none';
-
-  setStatus('st-reliefweb','warn','Loading');
-
-  const years = Math.max(1, Number(document.getElementById('rw-years').value || 10));
-  const daySpan = years * 365;
-  const limit = 1000; // ReliefWeb hard cap in this UI
-  const sinceDate = new Date(Date.now()-daySpan*86400000);
-  const sinceMillis = sinceDate.getTime();
-
-  const iso3ForQuery = getSelectedIso3();
-  const url='https://api.reliefweb.int/v1/reports?appname='+encodeURIComponent(APPNAME);
-
-  const body={
-    limit:limit,
-    offset:0,
-    filter:{ operator:'AND', conditions:[ {field:'country.iso3',value:iso3ForQuery} ] },
-    fields:{ include:['id','title','url','body','body-html','country','source','theme','disaster_type','date.created'] },
-    sort:['date.created:desc']
-  };
-
-  try{
-    const res=await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-    if(!res.ok){
-      setStatus('st-reliefweb','bad','Error');
-      st.textContent='ReliefWeb Error ('+res.status+')';
-      const t = await res.text().catch(()=> '');
-      out.innerHTML = `<div class="small err">Http ${res.status}<br/>${escapeHTML(t).slice(0,800)}</div>`;
-      return;
-    }
-
-    const json=await res.json();
-    const data=json.data || [];
-
-    currentItems=data.map(r=>{
-      const f=r.fields||{};
-      const rawHtml=(f['body-html']||'')
-        .replace(/<style[\s\S]*?<\/style>/gi,' ')
-        .replace(/<[^>]+>/g,' ');
-      const bodyText=(f.body && String(f.body).trim().length>0) ? f.body : rawHtml;
-
-      const metaTxt=[
-        f.title||'',
-        (f.theme||[]).map(t=>t.name).join(', '),
-        (f.disaster_type||[]).map(d=>d.name).join(', '),
-        (f.source||[]).map(s=>s.name).join(', '),
-        (f.country||[]).map(c=>c.name).join(', ')
-      ].join(' | ');
-
-      const baseText = metaTxt + ' ' + bodyText;
-      const hdp = hdpScore(baseText);
-      const c15 = classifyC15(baseText,3);
-      const risk = analyzeRiskAndConflict(baseText);
-
-      return {
-        id:r.id,
-        title:f.title||'',
-        url:f.url||'',
-        created:f['date.created']||'',
-        country:(f.country||[]).map(c=>c.name).join(', '),
-        source:(f.source||[]).map(s=>s.name).join(', '),
-        theme:(f.theme||[]).map(t=>t.name).join(', '),
-        type:(f.disaster_type||[]).map(d=>d.name).join(', '),
-        body:bodyText,
-        hdp,
-        c15,
-        risk,
-        riskScore: risk.riskScore,
-        conflictIndex: risk.conflictIndex
-      };
-    });
-
-    currentItems=currentItems.filter(it=>{
-      const t=Date.parse(it.created);
-      return isNaN(t) ? true : (t>=sinceMillis);
-    });
-
-    if(!currentItems.length){
-      setStatus('st-reliefweb','warn','Ok (0)');
-      st.textContent='Done (0)';
-      out.innerHTML='<div class="small">No Items Matched.</div>';
-      renderDashboardTiles();
-      return;
-    }
-
-    setStatus('st-reliefweb','ok','Ok ('+currentItems.length+')');
-    st.textContent='Done ('+currentItems.length+' Items)';
-    renderDashboardTiles();
-
-    let rows='';
-    currentItems.forEach((it,i)=>{
-      rows+=`
-        <tr>
-          <td style="width:40px"><input type="checkbox" class="rw-check" data-i="${i}"></td>
-          <td class="title-cell" style="cursor:pointer;text-decoration:underline">${escapeHTML(it.title)}</td>
-          <td>${escapeHTML(it.country)}</td>
-          <td>${escapeHTML(it.source)}</td>
-          <td>${renderRiskBadge(it.risk)}</td>
-          <td>${renderConflictBadge(it.conflictIndex)}</td>
-          <td>${hbarHTML(it.hdp)}</td>
-          <td>${renderC15Badges(it.c15)}</td>
-          <td><a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">Link</a></td>
-        </tr>`;
-    });
-
-    out.innerHTML=`
-      <table>
-        <thead>
-          <tr>
-            <th></th><th>Title</th><th>Country</th><th>Source</th>
-            <th>Risk</th><th>Conflict</th><th>Hdp</th><th>C1–C15</th><th>Url</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-
-    out.querySelectorAll('.title-cell').forEach((td,idx)=>{
-      td.onclick=()=> openSummaryModal(currentItems[idx]);
-    });
-
-  }catch(e){
-    setStatus('st-reliefweb','bad','Error');
-    st.textContent='ReliefWeb Error';
-    out.innerHTML='<div class="small err">'+escapeHTML(e.message)+'</div>';
-  }
-}
-
-/* =============================
-   External sources (minimal “connectivity + small sample”)
-   - UCDP: CORS blocked → proxy required in browser
-   - FTS: use api.hpc.tools base (docs mention v2 at api.hpc.tools) but path may vary by deployment
-============================= */
-async function fetchUcdp(){
-  setStatus('st-ucdp','warn','Loading');
-  const base = (document.getElementById('ucdp-base').value||'').trim();
-  const iso3s = getSelectedIso3();
-  // UCDP uses different filters; here we just do a minimal pagesize sample per ISO3
-  // This endpoint is known, but direct browser calls are often CORS-blocked → proxy required.
-  try{
-    let total = 0;
-    for(const iso3 of iso3s.slice(0,5)){ // limit to keep it light
-      const url = `${base}?pagesize=50&iso=${encodeURIComponent(iso3)}`;
-      const json = await fetchJsonSmart(url, true); // needs proxy
-      const n = (json && json.Result && json.Result.length) ? json.Result.length : (json && json.data ? json.data.length : 0);
-      total += n;
-      ensureSig(iso3).ucdp = { ok:true, n };
-    }
-    setStatus('st-ucdp','ok','Ok');
-  }catch(e){
-    setStatus('st-ucdp', e.message.includes('Needs Proxy') ? 'warn' : 'bad', e.message.includes('Needs Proxy') ? 'Needs Proxy' : 'Error');
-    // mark selected ISO3 with failure message
-    for(const iso3 of getSelectedIso3()){
-      ensureSig(iso3).ucdp = { ok:false, msg: e.message };
-    }
-  }
-}
-
-async function fetchFts(){
-  setStatus('st-fts','warn','Loading');
-  const base = (document.getElementById('fts-base').value||'').trim().replace(/\/$/,'');
-  const year = new Date().getFullYear();
-  // Because FTS paths can differ by version, keep it conservative and editable:
-  // Try a common pattern: {base}/appeal/year/{year}
-  // If your org uses another path, change it in UI.
-  const url = `${base}/appeal/year/${year}`;
-  try{
-    const json = await fetchJsonSmart(url, true); // likely needs proxy
-    const n = (json && json.data && json.data.length) ? json.data.length : (json && json.total ? json.total : 0);
-    for(const iso3 of getSelectedIso3()){
-      ensureSig(iso3).fts = { ok:true, n };
-    }
-    setStatus('st-fts','ok','Ok');
-  }catch(e){
-    setStatus('st-fts', e.message.includes('Needs Proxy') ? 'warn' : 'bad', e.message.includes('Needs Proxy') ? 'Needs Proxy' : 'Error');
-    for(const iso3 of getSelectedIso3()){
-      ensureSig(iso3).fts = { ok:false, msg: e.message };
-    }
-  }
-}
-
-async function fetchWorldBank(){
-  setStatus('st-wb','warn','Loading');
-  const base = (document.getElementById('wb-base').value||'').trim().replace(/\/$/,'');
-  // sample: latest GDP current USD (NY.GDP.MKTP.CD)
-  // World Bank API returns array: [metadata, [records...]]
-  try{
-    for(const iso3 of getSelectedIso3()){
-      const url = `${base}/country/${encodeURIComponent(iso3)}/indicator/NY.GDP.MKTP.CD?format=json&per_page=1`;
-      const json = await fetchJsonSmart(url, false);
-      const rec = (Array.isArray(json) && json[1] && json[1][0]) ? json[1][0] : null;
-      const val = rec ? rec.value : null;
-      ensureSig(iso3).wb = { ok:true, label: val==null ? 'Gdp: —' : ('Gdp: '+Number(val).toExponential(3)) };
-    }
-    setStatus('st-wb','ok','Ok');
-  }catch(e){
-    setStatus('st-wb','bad','Error');
-    for(const iso3 of getSelectedIso3()){
-      ensureSig(iso3).wb = { ok:false, msg: e.message };
-    }
-  }
-}
-
-async function fetchUnSdg(){
-  setStatus('st-unsdg','warn','Loading');
-  const base = (document.getElementById('unsdg-base').value||'').trim().replace(/\/$/,'');
-  // Minimal approach:
-  // 1) pull GeoArea list once (cached) then map ISO3 -> M49 geoAreaCode if present
-  // 2) fetch small sample of Indicator/Data for that geoAreaCode
-  // Note: If the API response schema differs, adjust here.
-  try{
-    // geo area list
-    const geoUrl = `${base}/GeoArea/List`;
-    const geoJson = await fetchJsonSmart(geoUrl, false);
-    const areas = geoJson && geoJson.geoArea ? geoJson.geoArea : (geoJson && geoJson.data ? geoJson.data : []);
-    const byIso3 = {};
-    (areas||[]).forEach(a=>{
-      const iso3 = (a.iso3 || a.ISO3 || '').toUpperCase();
-      const code = a.geoAreaCode || a.geoArea_Code || a.code;
-      if(iso3 && code!=null) byIso3[iso3] = code;
-    });
-
-    for(const iso3 of getSelectedIso3()){
-      const m49 = byIso3[iso3];
-      if(!m49){
-        ensureSig(iso3).unsdg = { ok:false, msg:'GeoAreaCode Not Found' };
-        continue;
-      }
-      // small sample
-      const dataUrl = `${base}/Indicator/Data?geoAreaCode=${encodeURIComponent(m49)}&pageSize=5`;
-      const dataJson = await fetchJsonSmart(dataUrl, false);
-      const n = (dataJson && dataJson.data && dataJson.data.length) ? dataJson.data.length : 0;
-      ensureSig(iso3).unsdg = { ok:true, n };
-    }
-    setStatus('st-unsdg','ok','Ok');
-  }catch(e){
-    setStatus('st-unsdg','bad','Error');
-    for(const iso3 of getSelectedIso3()){
-      ensureSig(iso3).unsdg = { ok:false, msg: e.message };
-    }
-  }
-}
-
-async function fetchDtm(){
-  setStatus('st-dtm','warn','Loading');
-  // DTM differs by endpoint and often requires auth / proxy.
-  // Here we only show “needs proxy” unless you replace dtm-base with your actual API endpoint.
-  try{
-    const base = (document.getElementById('dtm-base').value||'').trim().replace(/\/$/,'');
-    const testUrl = `${base}/api`; // placeholder ping
-    await fetchJsonSmart(testUrl, true); // likely needs proxy
-    for(const iso3 of getSelectedIso3()){
-      ensureSig(iso3).dtm = { ok:true, n: 1 };
-    }
-    setStatus('st-dtm','ok','Ok');
-  }catch(e){
-    setStatus('st-dtm', e.message.includes('Needs Proxy') ? 'warn' : 'bad', e.message.includes('Needs Proxy') ? 'Needs Proxy' : 'Error');
-    for(const iso3 of getSelectedIso3()){
-      ensureSig(iso3).dtm = { ok:false, msg: e.message };
-    }
-  }
-}
-
-/* =============================
-   Fetch orchestrator
-============================= */
-async function fetchAll(){
-  document.getElementById('rw-status').textContent='Fetching…';
-
-  const doReliefweb = document.getElementById('src-reliefweb').checked;
-  const doUcdp = document.getElementById('src-ucdp').checked;
-  const doFts = document.getElementById('src-fts').checked;
-  const doWb = document.getElementById('src-worldbank').checked;
-  const doUnsdg = document.getElementById('src-unsdg').checked;
-  const doDtm = document.getElementById('src-dtm').checked;
-
-  // reset ext signals for selected countries
-  for(const iso3 of getSelectedIso3()){
-    extSignals[iso3] = extSignals[iso3] || {};
-  }
-
-  try{
-    if(doReliefweb) await rwFetch();
-    else { setStatus('st-reliefweb','warn','Off'); }
-
-    // fire in parallel after reliefweb
-    const ps = [];
-    if(doUcdp) ps.push(fetchUcdp()); else setStatus('st-ucdp','warn','Off');
-    if(doFts)  ps.push(fetchFts());  else setStatus('st-fts','warn','Off');
-    if(doWb)   ps.push(fetchWorldBank()); else setStatus('st-wb','warn','Off');
-    if(doUnsdg)ps.push(fetchUnSdg()); else setStatus('st-unsdg','warn','Off');
-    if(doDtm)  ps.push(fetchDtm()); else setStatus('st-dtm','warn','Off');
-
-    await Promise.allSettled(ps);
-
-    document.getElementById('rw-status').textContent='Done';
-  }catch(e){
-    document.getElementById('rw-status').textContent='Error';
-  }
-}
-
-document.getElementById('btn-fetch-all').onclick = fetchAll;
-
-/* =============================
-   Risk narrative
-============================= */
-function buildRiskNarrative(){
-  if(!currentItems.length){ alert('Fetch ReliefWeb First.'); return; }
-
-  const now = Date.now();
-  const since = now - 30*86400000;
-  const items30 = currentItems.filter(it=>{
-    const t = Date.parse(it.created);
-    return isNaN(t) ? false : (t>=since);
-  });
-
-  const lines=[];
-  const total=items30.length;
-  const high=items30.filter(it=>it.risk && it.risk.riskLevel==='high').length;
-  const med =items30.filter(it=>it.risk && it.risk.riskLevel==='med').length;
-  const c4  =items30.filter(it=>it.conflictIndex>=4).length;
-
-  lines.push(`• Last 30 Days: ${total} Docs (High ${high}, Med ${med})`);
-  if(c4>0) lines.push(`• Conflict Heat ≥ 4: ${c4} Docs`);
-
-  const byC = {};
-  items30.forEach(it=>{
-    const c=(it.country||'').split(',')[0].trim()||'Unknown';
-    byC[c]=(byC[c]||0)+1;
-  });
-  const top = Object.entries(byC).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  if(top.length) lines.push(`• Top Countries: ${top.map(([c,n])=>`${c}(${n})`).join(', ')}`);
-
-  const box=document.getElementById('risk-narrative-box');
-  box.textContent=lines.join('\n');
-  box.style.display='block';
-}
-document.getElementById('btn-risk-narrative').onclick = buildRiskNarrative;
-
-/* =============================
-   Save notes
-============================= */
-document.getElementById('rw-to-notes').onclick=function(){
+document.getElementById('btn-save-notes').onclick=()=>{
+  const reports = getFilteredReports();
   const checks = Array.from(document.querySelectorAll('.rw-check')).filter(cb=>cb.checked);
-  if(!checks.length){ alert('Select Rows To Save.'); return; }
-  if(!currentItems.length){ alert('Fetch ReliefWeb First.'); return; }
+  if(!checks.length){ alert('Select rows first.'); return; }
 
   const db=getDB();
   const now=Date.now();
@@ -1312,11 +1351,10 @@ document.getElementById('rw-to-notes').onclick=function(){
 
   checks.forEach(cb=>{
     const idx=Number(cb.dataset.i);
-    const it=currentItems[idx];
+    const it=reports[idx];
     if(!it) return;
 
-    const meta=[it.title,it.country,it.source].join(' | ');
-    const summary=summarizeText(it.body||meta,3) || meta;
+    const summary=summarizeText(it.body||it.title,3) || it.title;
     const id='rw-'+it.id;
 
     if(db.notes.some(n=>n.id===id)) return;
@@ -1325,7 +1363,7 @@ document.getElementById('rw-to-notes').onclick=function(){
       id,
       title:it.title,
       body:it.body,
-      country:it.country,
+      country:firstCountryName(it.country),
       source:it.source,
       url:it.url,
       created:now,
@@ -1339,28 +1377,93 @@ document.getElementById('rw-to-notes').onclick=function(){
   });
 
   setDB(db);
-  renderNotes(document.getElementById('notes-q').value);
-  document.getElementById('rw-status').textContent = added+' Saved';
+  alert(`${added} saved.`);
 };
 
-document.getElementById('notes-refresh').onclick=function(){ renderNotes(document.getElementById('notes-q').value); };
-document.getElementById('notes-clear').onclick=function(){
-  if(!confirm('Delete All Notes?')) return;
-  setDB({notes:[]});
-  renderNotes('');
-};
-document.getElementById('notes-q').addEventListener('input',function(e){ renderNotes(e.target.value); });
+/* =============================
+  Orchestrator
+============================= */
+function rerenderAll(){
+  rebuildPartnerDropdown(); // keep partner list synced
+  setKV();
+  renderDashboardTiles();
+  renderReportTable();
+  renderAcledPoints();
+}
 
-/* dashboard controls */
 document.getElementById('dash-recalc').onclick = renderDashboardTiles;
 document.getElementById('dash-metric').onchange = renderDashboardTiles;
 document.getElementById('dash-agg').onchange = renderDashboardTiles;
 document.getElementById('dash-sort').onchange = renderDashboardTiles;
 
-/* init */
-migrateNotesIfNeeded();
+document.getElementById('table-q').addEventListener('input', ()=> rerenderAll());
+document.getElementById('map-acled').onchange = ()=> renderAcledPoints();
+
+/* =============================
+  Fetch button (Sources)
+============================= */
+document.getElementById('btn-fetch').onclick = async ()=>{
+  const st = document.getElementById('status');
+  st.textContent = 'Fetching…';
+  st.className = 'small';
+
+  try{
+    const doRW = document.getElementById('src-rw').checked;
+    const doAcled = document.getElementById('src-acled').checked;
+
+    if(doRW){
+      currentReports = await fetchReliefWeb();
+    } else {
+      currentReports = [];
+    }
+
+    // partner dropdown must reflect new reports
+    rebuildPartnerDropdown();
+
+    if(doAcled){
+      currentEvents = await fetchAcled();
+    } else {
+      currentEvents = [];
+    }
+
+    // if active country set but no longer exists, clear
+    if(activeCountry){
+      const allowed = new Set(getActiveCountries());
+      if(!allowed.has(activeCountry)){
+        activeCountry = '';
+        updateActiveCountryBadge();
+      }
+    }
+
+    st.textContent = `Ok. Reports: ${currentReports.length} · Acled: ${currentEvents.length}`;
+    rerenderAll();
+  }catch(e){
+    st.textContent = 'Failed.';
+    const msg = (e && e.message) ? e.message : String(e);
+    document.getElementById('rw-results').innerHTML = `<div class="small err">${escapeHTML(msg)}</div>`;
+    console.error(e);
+  }
+};
+
+/* =============================
+  Esc key closes modals
+============================= */
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    document.getElementById('summary-modal').style.display='none';
+    document.getElementById('country-modal').style.display='none';
+    document.getElementById('notes-modal').style.display='none';
+  }
+});
+
+/* =============================
+  Init
+============================= */
+initMap();
+updateActiveCountryBadge();
 renderNotes('');
 renderDashboardTiles();
+renderReportTable();
 </script>
 </body>
 </html>
