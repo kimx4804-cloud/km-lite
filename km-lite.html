@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>km-lite v2.6 — ReliefWeb + ACLED · Dashboard</title>
+<title>km-lite v2.8 — Multi-source (ReliefWeb + ACLED + UCDP + WB + SDG + FTS + DTM)</title>
 
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
@@ -18,6 +18,7 @@
   --mut:#8aa0bb;
   --line:rgba(255,255,255,.10);
   --line2:rgba(255,255,255,.16);
+  --shadow: 0 10px 24px rgba(0,0,0,.30);
 
   --h:#3aa3ff;
   --d:#61d661;
@@ -27,23 +28,17 @@
   --low:#43c174;
   --med:#f2b45a;
   --high:#ff5c5c;
-
-  --shadow: 0 10px 24px rgba(0,0,0,.30);
 }
 
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0;
-  padding:16px;
-  background:var(--bg);
-  color:var(--fg);
+  margin:0; padding:16px;
+  background:var(--bg); color:var(--fg);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial, sans-serif;
-  letter-spacing:.1px;
-  font-size:13px;
+  font-size:13px; letter-spacing:.1px;
 }
-
-.container{max-width:1280px;margin:0 auto}
+.container{max-width:1320px;margin:0 auto}
 h1{font-size:15px;margin:0 0 10px;font-weight:700}
 .small{font-size:12px;color:var(--mut);line-height:1.5}
 .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
@@ -100,6 +95,14 @@ hr{border:none;border-top:1px solid var(--line); margin:12px 0}
   text-transform:uppercase;
 }
 
+/* Toggle */
+.tgl{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 10px;border:1px solid var(--line);border-radius:14px;
+  background:rgba(15,22,32,.40);
+}
+.tgl input{accent-color:#9bd0ff}
+
 /* KPI tiles */
 .kpi-grid{
   display:grid;
@@ -132,22 +135,22 @@ hr{border:none;border-top:1px solid var(--line); margin:12px 0}
 /* layout */
 .main-grid{
   display:grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 1fr 460px;
   gap:12px;
   align-items:start;
 }
-@media (max-width:1120px){ .main-grid{grid-template-columns:1fr;} }
+@media (max-width:1180px){ .main-grid{grid-template-columns:1fr;} }
 
 /* map */
 #map{
-  height:74vh; /* taller */
+  height:78vh; /* taller */
   width:100%;
   border-radius:16px;
   border:1px solid var(--line);
   overflow:hidden;
   background:#0c121a;
 }
-@media (max-width:860px){ #map{height:66vh;} }
+@media (max-width:860px){ #map{height:70vh;} }
 
 /* list */
 table{border-collapse:collapse;width:100%;font-size:13px}
@@ -213,7 +216,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
   padding:16px;
 }
 .modal > div{
-  width:min(920px, 92vw);
+  width:min(980px, 92vw);
   max-height:84vh;
   overflow:auto;
   background:var(--bg);
@@ -225,35 +228,37 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
 .modal h3{margin:0 0 8px;font-size:15px;font-weight:700}
 .modal .meta{margin:0 0 10px;color:var(--mut);font-size:12px}
 pre.wrap{white-space:pre-wrap;margin:0;font-size:13px;line-height:1.6;color:#dce8f7}
+
+.codebox{
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:10px;
+  background:rgba(15,22,32,.35);
+}
+
 </style>
 </head>
 
 <body>
 <div class="container">
-  <h1>recap km-lite v2.6</h1>
+  <h1>recap km-lite v2.8</h1>
 
+  <!-- Controls -->
   <div class="card">
     <div class="spread">
       <div class="row">
-        <span class="pill">Data</span>
-        <select id="src-mode" title="Data Source">
-          <option value="reliefweb">ReliefWeb Reports</option>
-          <option value="acled">ACLED Events (Key Required)</option>
-          <option value="both">Both</option>
-        </select>
-
         <span class="pill">Window</span>
-        <label class="small">Recent Days</label>
-        <input id="days" type="number" value="3650" style="width:98px" title="Default: 10 Years"/>
+        <label class="small">Recent Years</label>
+        <input id="years" type="number" value="10" min="1" step="1" style="width:90px"/>
 
-        <span class="badge" id="limit-chip" title="Maximum Items (Fixed)">Max</span>
+        <span class="badge" id="limit-chip" title="Maximum Items (Safety Cap)">Max</span>
 
         <button id="btn-country" title="Collection Target Countries">Country Set</button>
         <span id="country-chip" class="badge">All 20</span>
 
         <span class="pill">Filters</span>
         <label class="small">Country</label>
-        <select id="filter-country" style="min-width:210px">
+        <select id="filter-country" style="min-width:220px">
           <option value="">All</option>
         </select>
 
@@ -271,17 +276,77 @@ pre.wrap{white-space:pre-wrap;margin:0;font-size:13px;line-height:1.6;color:#dce
       </div>
     </div>
 
-    <div id="acled-key-row" class="row" style="margin-top:10px; display:none;">
-      <span class="pill">ACLED</span>
-      <label class="small">Api Key</label>
-      <input id="acled-key" placeholder="ACLED_API_KEY" style="min-width:240px; flex:1"/>
-      <label class="small">Email</label>
-      <input id="acled-email" placeholder="you@example.com" style="min-width:220px; flex:1"/>
+    <div class="row" style="margin-top:10px">
+      <span class="pill">Data Sources</span>
+
+      <label class="tgl"><input id="use-reliefweb" type="checkbox" checked> ReliefWeb</label>
+      <label class="tgl"><input id="use-acled" type="checkbox"> ACLED</label>
+      <label class="tgl"><input id="use-ucdp" type="checkbox"> UCDP (No Key)</label>
+
+      <label class="tgl"><input id="use-worldbank" type="checkbox"> World Bank</label>
+      <label class="tgl"><input id="use-unsdg" type="checkbox"> UN SDG</label>
+
+      <label class="tgl"><input id="use-fts" type="checkbox"> OCHA FTS</label>
+      <label class="tgl"><input id="use-dtm" type="checkbox"> IOM DTM</label>
+    </div>
+
+    <!-- Keys / Params -->
+    <div class="row" style="margin-top:10px">
+      <div class="codebox" style="flex:1; min-width:320px">
+        <div class="small" style="font-weight:700;margin-bottom:8px">ACLED</div>
+        <div class="row">
+          <label class="small">Api Key</label>
+          <input id="acled-key" placeholder="ACLED_API_KEY" style="min-width:240px; flex:1"/>
+          <label class="small">Email</label>
+          <input id="acled-email" placeholder="you@example.com" style="min-width:220px; flex:1"/>
+          <button id="save-keys">Save</button>
+        </div>
+        <div class="small" style="margin-top:6px">Stored In <span class="mono">localStorage</span>.</div>
+      </div>
+
+      <div class="codebox" style="flex:1; min-width:320px">
+        <div class="small" style="font-weight:700;margin-bottom:8px">Indicators</div>
+        <div class="row">
+          <label class="small">World Bank Indicator</label>
+          <input id="wb-ind" value="NY.GDP.MKTP.CD" style="min-width:220px;flex:1"/>
+          <label class="small">Year</label>
+          <input id="ind-year" type="number" value="2024" style="width:90px"/>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="small">UN SDG Series/Indicator</label>
+          <input id="sdg-ind" placeholder="Example: 16.1.1 Or Series Code" style="min-width:220px;flex:1"/>
+          <span class="small">Shown For Selected Country Only</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <div class="codebox" style="flex:1; min-width:320px">
+        <div class="small" style="font-weight:700;margin-bottom:8px">OCHA FTS</div>
+        <div class="row">
+          <label class="small">Appeal Year</label>
+          <input id="fts-year" type="number" value="2024" style="width:90px"/>
+          <span class="small">Uses Public API.</span>
+        </div>
+      </div>
+
+      <div class="codebox" style="flex:1; min-width:320px">
+        <div class="small" style="font-weight:700;margin-bottom:8px">IOM DTM</div>
+        <div class="small">
+          DTM API는 배포 환경에 따라 <span class="mono">CORS</span>로 브라우저 직접 호출이 막힐 수 있습니다.<br/>
+          아래에 “DTM JSON Endpoint”를 넣으면 가능한 경우 호출하고, 아니면 에러를 상태창에 표시합니다.
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input id="dtm-url" placeholder="DTM Endpoint (Optional)" style="min-width:260px;flex:1"/>
+          <button id="dtm-clear">Clear</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <hr/>
 
+  <!-- Dashboard -->
   <div class="card">
     <div class="spread" style="margin-bottom:8px;">
       <div class="section-title">Dashboard</div>
@@ -304,7 +369,7 @@ pre.wrap{white-space:pre-wrap;margin:0;font-size:13px;line-height:1.6;color:#dce
       </div>
 
       <div class="kpi" style="grid-column: span 3;">
-        <div class="k">ACLED Events</div>
+        <div class="k">ACLED/UCDP Events</div>
         <div class="v" id="kpi-events">—</div>
       </div>
 
@@ -353,17 +418,16 @@ pre.wrap{white-space:pre-wrap;margin:0;font-size:13px;line-height:1.6;color:#dce
 
   <hr/>
 
+  <!-- Main -->
   <div class="main-grid">
     <div class="card">
       <div class="spread" style="margin-bottom:8px;">
         <div class="section-title">Map</div>
         <div class="row">
-          <select id="map-layer" title="Map Layer">
-            <option value="auto">Auto</option>
-            <option value="country">Country Aggregates</option>
-            <option value="acled">ACLED Points</option>
-            <option value="both">Both</option>
-          </select>
+          <label class="tgl"><input id="layer-country" type="checkbox" checked> Country Aggregates</label>
+          <label class="tgl"><input id="layer-acled" type="checkbox"> ACLED Points</label>
+          <label class="tgl"><input id="layer-ucdp" type="checkbox"> UCDP Points</label>
+
           <select id="map-metric" title="Country Metric">
             <option value="conflictIndex">Country: Conflict Heat</option>
             <option value="riskScore">Country: Risk Score</option>
@@ -379,23 +443,31 @@ pre.wrap{white-space:pre-wrap;margin:0;font-size:13px;line-height:1.6;color:#dce
     </div>
 
     <div class="card">
-      <div class="section-title">Insights</div>
+      <div class="section-title">Selected Country Indicators</div>
+      <div class="small" style="margin-bottom:10px">Selected Country = Filter Country.</div>
 
       <div class="kpi" style="margin-bottom:10px">
-        <div class="k">Top Countries</div>
-        <div class="v" id="side-countries">—</div>
-        <div class="s">Top 5</div>
+        <div class="k">World Bank</div>
+        <div class="v" id="ind-wb">—</div>
+        <div class="s" id="ind-wb-s">Indicator: —</div>
       </div>
 
       <div class="kpi" style="margin-bottom:10px">
-        <div class="k">Top Partners</div>
-        <div class="v" id="side-partners">—</div>
-        <div class="s">Top 5 (Reports Only)</div>
+        <div class="k">UN SDG</div>
+        <div class="v" id="ind-sdg">—</div>
+        <div class="s" id="ind-sdg-s">Indicator: —</div>
+      </div>
+
+      <div class="kpi" style="margin-bottom:10px">
+        <div class="k">OCHA FTS</div>
+        <div class="v" id="ind-fts">—</div>
+        <div class="s" id="ind-fts-s">Year: —</div>
       </div>
 
       <div class="kpi">
-        <div class="k">Latest Date</div>
-        <div class="v" id="side-recent">—</div>
+        <div class="k">IOM DTM</div>
+        <div class="v" id="ind-dtm">—</div>
+        <div class="s" id="ind-dtm-s">Endpoint: —</div>
       </div>
     </div>
   </div>
@@ -449,7 +521,8 @@ pre.wrap{white-space:pre-wrap;margin:0;font-size:13px;line-height:1.6;color:#dce
    Config
 ============================= */
 const APPNAME = "HyunKim+recap_km_lite+a5Ttg7U8";
-const MAX_ITEMS = 1500; // "Max" (safety cap for browser & API)
+const MAX_ITEMS = 2000; // Max safety cap (browser friendly)
+const LS_KEY = "km_lite_v28_cfg";
 
 /* =============================
    Utils
@@ -464,6 +537,7 @@ function escapeHTML(s){
 }
 function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
 function clamp(x,a,b){ return Math.max(a, Math.min(b, x)); }
+function safeNum(x){ const n=Number(x); return isFinite(n)?n:null; }
 
 /* =============================
    Countries
@@ -492,11 +566,67 @@ const COUNTRY_CENTROIDS = {
   SLB:[-9.6457,160.1562], TLS:[-8.8742,125.7275]
 };
 
+const COUNTRY_NAME_TO_ISO3 = (() => {
+  const m = {};
+  RECAP_MAP.forEach(x => m[x.name.toLowerCase()] = x.iso3);
+  return m;
+})();
+function inferIso3(countryArr){
+  if(Array.isArray(countryArr)){
+    const hit = countryArr.find(c => c && c.iso3);
+    if(hit && hit.iso3) return String(hit.iso3).toUpperCase();
+    const nm = (countryArr[0] && countryArr[0].name) ? String(countryArr[0].name).toLowerCase() : '';
+    if(nm && COUNTRY_NAME_TO_ISO3[nm]) return COUNTRY_NAME_TO_ISO3[nm];
+  }
+  return '';
+}
+
+/* =============================
+   State
+============================= */
 let pickedISO3 = [];
-let currentItems = [];
+let currentItems = [];     // unified list (reliefweb + acled + ucdp)
 let selectedISO3 = "";
 let selectedPartner = "";
-let listSpecialMode = "";
+let listSpecialMode = "";  // "", "high", "c4"
+
+function iso3ForQuery(){ return pickedISO3.length ? pickedISO3 : RECAP_ISO3; }
+
+/* =============================
+   Config persistence (keys, dtm url)
+============================= */
+function loadCfg(){
+  try{
+    const x = JSON.parse(localStorage.getItem(LS_KEY)||'{}');
+    return x && typeof x==='object' ? x : {};
+  }catch(e){ return {}; }
+}
+function saveCfg(cfg){
+  localStorage.setItem(LS_KEY, JSON.stringify(cfg||{}));
+}
+function initCfgUI(){
+  const cfg = loadCfg();
+  document.getElementById('acled-key').value = cfg.acledKey || '';
+  document.getElementById('acled-email').value = cfg.acledEmail || '';
+  document.getElementById('dtm-url').value = cfg.dtmUrl || '';
+}
+document.getElementById('save-keys').onclick = ()=>{
+  const cfg = loadCfg();
+  cfg.acledKey = (document.getElementById('acled-key').value||'').trim();
+  cfg.acledEmail = (document.getElementById('acled-email').value||'').trim();
+  cfg.dtmUrl = (document.getElementById('dtm-url').value||'').trim();
+  saveCfg(cfg);
+  const st = document.getElementById('status');
+  st.textContent = 'Saved';
+  setTimeout(()=>{ if(st.textContent==='Saved') st.textContent=''; }, 900);
+};
+document.getElementById('dtm-clear').onclick = ()=>{
+  document.getElementById('dtm-url').value = '';
+  const cfg = loadCfg();
+  cfg.dtmUrl = '';
+  saveCfg(cfg);
+};
+initCfgUI();
 
 /* =============================
    Indicators: HDP
@@ -579,7 +709,7 @@ function summarizeText(text,maxSentences){
 }
 
 /* =============================
-  Risk / Conflict / Policy
+  Risk / Conflict / Policy (Text-based)
 ============================= */
 const RISK_DICT = {
   security: [
@@ -649,6 +779,7 @@ function analyzeRiskAndConflict(text){
   if(rawScore >= 18) level = 'high';
   else if(rawScore >= 8) level = 'med';
 
+  // conflict heat by terms
   let conflictScore = 0;
   CONFLICT_TERMS.forEach(term=>{
     const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g');
@@ -661,6 +792,7 @@ function analyzeRiskAndConflict(text){
   else if(conflictScore >= 2) conflictIndex = 3;
   else if(conflictScore >= 1) conflictIndex = 2;
 
+  // policy flag
   let policy = false;
   POLICY_TERMS.forEach(term=>{ if(T.includes(term.toLowerCase())) policy = true; });
 
@@ -735,48 +867,7 @@ function renderC15Badges(arr){
 }
 
 /* =============================
-   Source UI
-============================= */
-const srcModeEl = document.getElementById('src-mode');
-const acledRow = document.getElementById('acled-key-row');
-function syncSourceUI(){
-  const mode = srcModeEl.value;
-  acledRow.style.display = (mode==='acled' || mode==='both') ? 'flex' : 'none';
-}
-srcModeEl.onchange = syncSourceUI;
-syncSourceUI();
-
-/* =============================
-   Filters
-============================= */
-function iso3ForQuery(){ return pickedISO3.length ? pickedISO3 : RECAP_ISO3; }
-function itemMatchesPartner(it, partner){
-  if(!partner) return true;
-  const s = (it.source||'').toLowerCase();
-  const p = partner.toLowerCase();
-  return s.includes(p);
-}
-function applyFilters(items){
-  let out = (items||[]).slice();
-  if(selectedISO3) out = out.filter(it => String(it.iso3||'') === String(selectedISO3));
-  if(selectedPartner) out = out.filter(it => it.sourceType !== 'acled' && itemMatchesPartner(it, selectedPartner));
-  if(listSpecialMode==='high') out = out.filter(it => it.risk && it.risk.riskLevel==='high');
-  else if(listSpecialMode==='c4') out = out.filter(it => (it.conflictIndex||0) >= 4);
-  return out;
-}
-document.getElementById('filter-country').onchange = (e)=>{ selectedISO3 = e.target.value||""; applyFiltersAndRender(); };
-document.getElementById('filter-partner').onchange = (e)=>{ selectedPartner = e.target.value||""; applyFiltersAndRender(); };
-document.getElementById('btn-clear-filters').onclick = ()=>{
-  selectedISO3=""; selectedPartner=""; listSpecialMode="";
-  document.getElementById('filter-country').value="";
-  document.getElementById('filter-partner').value="";
-  applyFiltersAndRender();
-};
-document.getElementById('kpi-high-tile').onclick = ()=>{ listSpecialMode = (listSpecialMode==='high')?'':'high'; applyFiltersAndRender(); };
-document.getElementById('kpi-c4-tile').onclick   = ()=>{ listSpecialMode = (listSpecialMode==='c4')?'':'c4'; applyFiltersAndRender(); };
-
-/* =============================
-   Partner dropdown
+   Partner filter
 ============================= */
 const DEFAULT_PARTNERS = ['UNDP','UNICEF','WFP','UNHCR','IOM','WHO','FAO','UNFPA','UN Women','OCHA'];
 function normalizePartnerName(x){ return String(x||'').trim(); }
@@ -810,6 +901,34 @@ function renderCountryDropdown(){
   sel.value = current;
 }
 renderCountryDropdown();
+
+/* =============================
+   Filters apply
+============================= */
+function itemMatchesPartner(it, partner){
+  if(!partner) return true;
+  const s = (it.source||'').toLowerCase();
+  const p = partner.toLowerCase();
+  return s.includes(p);
+}
+function applyFilters(items){
+  let out = (items||[]).slice();
+  if(selectedISO3) out = out.filter(it => String(it.iso3||'') === String(selectedISO3));
+  if(selectedPartner) out = out.filter(it => it.sourceType === 'reliefweb' && itemMatchesPartner(it, selectedPartner));
+  if(listSpecialMode==='high') out = out.filter(it => it.risk && it.risk.riskLevel==='high');
+  else if(listSpecialMode==='c4') out = out.filter(it => (it.conflictIndex||0) >= 4);
+  return out;
+}
+document.getElementById('filter-country').onchange = (e)=>{ selectedISO3 = e.target.value||""; applyFiltersAndRender(); };
+document.getElementById('filter-partner').onchange = (e)=>{ selectedPartner = e.target.value||""; applyFiltersAndRender(); };
+document.getElementById('btn-clear-filters').onclick = ()=>{
+  selectedISO3=""; selectedPartner=""; listSpecialMode="";
+  document.getElementById('filter-country').value="";
+  document.getElementById('filter-partner').value="";
+  applyFiltersAndRender();
+};
+document.getElementById('kpi-high-tile').onclick = ()=>{ listSpecialMode = (listSpecialMode==='high')?'':'high'; applyFiltersAndRender(); };
+document.getElementById('kpi-c4-tile').onclick   = ()=>{ listSpecialMode = (listSpecialMode==='c4')?'':'c4'; applyFiltersAndRender(); };
 
 /* =============================
    Country set modal
@@ -865,7 +984,17 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 
 let countryLayer = L.layerGroup().addTo(map);
 let acledLayer = L.layerGroup().addTo(map);
+let ucdpLayer  = L.layerGroup().addTo(map);
 
+function setCountryFilter(iso3){
+  selectedISO3 = iso3 || "";
+  document.getElementById('filter-country').value = selectedISO3;
+  // refresh indicators when country changes
+  refreshSelectedIndicators();
+  applyFiltersAndRender();
+}
+
+/* 24m window used for aggregates */
 function getWindowedItems24m(items){
   const now = Date.now();
   const since = now - 730*86400000;
@@ -874,11 +1003,12 @@ function getWindowedItems24m(items){
     return isNaN(t) ? true : (t>=since);
   });
 }
+
 function aggregateByCountry(items, metric, agg){
   const buckets = {};
   items.forEach(it=>{
     if(!it.iso3) return;
-    if(it.sourceType==='acled') return;
+    if(it.sourceType!=='reliefweb') return; // aggregates for RW reports
     const v = (metric==='conflictIndex') ? it.conflictIndex : it.riskScore;
     if(v==null || !isFinite(v)) return;
     if(!buckets[it.iso3]) buckets[it.iso3]=[];
@@ -915,32 +1045,37 @@ function acledStyleFromFatalities(f){
   else if(fat>=1) color = '#f2b45a';
   return {radius, color};
 }
-
-function setCountryFilter(iso3){
-  selectedISO3 = iso3 || "";
-  document.getElementById('filter-country').value = selectedISO3;
-  applyFiltersAndRender();
+function ucdpStyleFromDeaths(d){
+  const n = Number(d||0);
+  const radius = clamp(3 + Math.sqrt(Math.max(0,n))*1.1, 3, 14);
+  let color = '#43c174';
+  if(n>=25) color = '#ff5c5c';
+  else if(n>=1) color = '#f2b45a';
+  return {radius, color};
 }
 
 function renderMap(){
   countryLayer.clearLayers();
   acledLayer.clearLayers();
+  ucdpLayer.clearLayers();
   if(!currentItems.length) return;
 
   const filtered = applyFilters(currentItems);
 
-  const mode = document.getElementById('src-mode').value;
-  const layerMode = document.getElementById('map-layer').value;
-  const effective = (layerMode==='auto') ? (mode==='both'?'both':mode) : layerMode;
+  const showCountry = document.getElementById('layer-country').checked;
+  const showACLED   = document.getElementById('layer-acled').checked;
+  const showUCDP    = document.getElementById('layer-ucdp').checked;
 
-  if(effective==='country' || effective==='both' || effective==='reliefweb'){
+  if(showCountry){
     const metric = document.getElementById('map-metric').value;
     const agg = document.getElementById('map-agg').value;
     const items24 = getWindowedItems24m(filtered);
     const rows = aggregateByCountry(items24, metric, agg);
+
     rows.forEach(r=>{
       const ll = COUNTRY_CENTROIDS[r.iso3];
       if(!ll) return;
+
       const color = colorByValue(r.value, metric);
       const radius = 10 + clamp(r.n, 0, 40) * 0.45;
       const name = (RECAP_MAP.find(x=>x.iso3===r.iso3)||{}).name || r.iso3;
@@ -956,6 +1091,7 @@ function renderMap(){
           <div style="font-weight:700;margin-bottom:6px;">${escapeHTML(name)} <span style="opacity:.8">(${escapeHTML(r.iso3)})</span></div>
           <div>${escapeHTML(label)} (${escapeHTML(agg)}): <b>${escapeHTML(String(vtxt))}</b></div>
           <div style="margin-top:4px; color:#8aa0bb;">N (24M Reports): ${escapeHTML(String(r.n))}</div>
+          <div style="margin-top:6px;"><span class="small">Click = Filter Country</span></div>
         </div>
       `);
       circle.on('click', ()=> setCountryFilter(r.iso3));
@@ -963,11 +1099,8 @@ function renderMap(){
     });
   }
 
-  if(effective==='acled' || effective==='both'){
-    const acledEvents = filtered.filter(it=>it.sourceType==='acled' && it.lat!=null && it.lon!=null);
-    const maxPts = 1500;
-    const pts = acledEvents.slice(0, maxPts);
-
+  if(showACLED){
+    const pts = filtered.filter(it=>it.sourceType==='acled' && it.lat!=null && it.lon!=null).slice(0, 2000);
     pts.forEach(ev=>{
       const {radius, color} = acledStyleFromFatalities(ev.fatalities);
       const m = L.circleMarker([ev.lat, ev.lon],{
@@ -987,6 +1120,7 @@ function renderMap(){
           <div style="color:#8aa0bb">${escapeHTML(when)} · ${escapeHTML(name)} (${escapeHTML(ev.iso3||'')})</div>
           <div style="margin-top:6px">${escapeHTML(et)}</div>
           <div style="margin-top:4px">${escapeHTML(loc)} · Fatalities: <b>${escapeHTML(fat)}</b></div>
+          <div style="margin-top:6px;"><span class="small">Click = Filter Country</span></div>
         </div>
       `);
 
@@ -994,176 +1128,39 @@ function renderMap(){
       m.addTo(acledLayer);
     });
   }
-}
-document.getElementById('map-refresh').onclick = renderMap;
-document.getElementById('map-layer').onchange = renderMap;
-document.getElementById('map-metric').onchange = renderMap;
-document.getElementById('map-agg').onchange = renderMap;
 
-/* =============================
-   Fetch: ReliefWeb / ACLED
-============================= */
-async function fetchReliefWeb(daySpan, limit){
-  const url = 'https://api.reliefweb.int/v1/reports?appname=' + encodeURIComponent(APPNAME);
-  const body = {
-    limit: Math.min(limit, 1000),  // ReliefWeb practical cap per request
-    offset: 0,
-    filter:{ operator:'AND', conditions:[ {field:'country.iso3', value: iso3ForQuery()} ] },
-    fields:{ include:['id','title','url','body','body-html','country','source','theme','disaster_type','date.created'] },
-    sort:['date.created:desc']
-  };
-
-  const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  if(!res.ok){
-    const t = await res.text().catch(()=> '');
-    throw new Error('ReliefWeb HTTP '+res.status+' :: '+t.slice(0,220));
-  }
-  const json = await res.json();
-  const data = json.data || [];
-  const sinceMillis = Date.now() - daySpan*86400000;
-
-  const items = data.map(r=>{
-    const f=r.fields||{};
-    const rawHtml=(f['body-html']||'').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ');
-    const bodyText=(f.body && String(f.body).trim().length>0) ? f.body : rawHtml;
-
-    const countryArr = (f.country||[]);
-    const iso3 = countryArr.length ? (countryArr[0].iso3 || '') : '';
-
-    const metaTxt = [
-      f.title||'',
-      (f.theme||[]).map(t=>t.name).join(', '),
-      (f.disaster_type||[]).map(d=>d.name).join(', '),
-      (f.source||[]).map(s=>s.name).join(', '),
-      countryArr.map(c=>c.name).join(', ')
-    ].join(' | ');
-
-    const baseText = metaTxt + ' ' + bodyText;
-    const hdp = hdpScore(baseText);
-    const c15 = classifyC15(baseText,3);
-    const risk = analyzeRiskAndConflict(baseText);
-
-    return {
-      id: 'rw-'+r.id,
-      sourceType: 'reliefweb',
-      title: f.title||'(Untitled)',
-      url: f.url||'',
-      created: f['date.created']||'',
-      country: countryArr.map(c=>c.name).join(', '),
-      iso3: iso3,
-      source: (f.source||[]).map(s=>s.name).join(', '),
-      theme: (f.theme||[]).map(t=>t.name).join(', '),
-      type: (f.disaster_type||[]).map(d=>d.name).join(', '),
-      body: bodyText,
-      hdp, c15,
-      risk,
-      riskScore: risk.riskScore,
-      conflictIndex: risk.conflictIndex
-    };
-  }).filter(it=>{
-    const t = Date.parse(it.created);
-    return isNaN(t) ? true : (t>=sinceMillis);
-  });
-
-  return items;
-}
-
-async function fetchACLED(daySpan, totalLimit){
-  const key = (document.getElementById('acled-key').value||'').trim();
-  const email = (document.getElementById('acled-email').value||'').trim();
-  if(!key || !email) return [];
-
-  const iso3s = iso3ForQuery();
-  const since = new Date(Date.now() - daySpan*86400000);
-  const sinceStr = since.toISOString().slice(0,10);
-
-  const hardMax = Math.min(Math.max(200, totalLimit), 2000);
-  const out = [];
-
-  for(const iso3 of iso3s){
-    if(out.length >= hardMax) break;
-
-    const per = Math.min(500, hardMax - out.length);
-    const url = new URL('https://api.acleddata.com/acled/read');
-    url.searchParams.set('key', key);
-    url.searchParams.set('email', email);
-    url.searchParams.set('iso', iso3);
-    url.searchParams.set('event_date', sinceStr + '|');
-    url.searchParams.set('limit', String(per));
-    url.searchParams.set('sort', 'event_date:desc');
-
-    const res = await fetch(url.toString());
-    if(!res.ok){
-      const t = await res.text().catch(()=> '');
-      throw new Error('ACLED HTTP '+res.status+' ('+iso3+') :: '+t.slice(0,220));
-    }
-    const json = await res.json();
-    const events = (json.data || []);
-
-    events.forEach(e=>{
-      if(out.length >= hardMax) return;
-
-      const lat = (e.latitude!=null) ? Number(e.latitude) : null;
-      const lon = (e.longitude!=null) ? Number(e.longitude) : null;
-      if(!(isFinite(lat) && isFinite(lon))) return;
-
-      const name = (RECAP_MAP.find(x=>x.iso3===iso3)||{}).name || iso3;
-      const title = `${e.event_type || 'Event'}${e.sub_event_type ? ' · '+e.sub_event_type : ''}`;
-      const when = e.event_date || '';
-      const loc = [e.location, e.admin1].filter(Boolean).join(', ');
-      const fat = (e.fatalities!=null) ? Number(e.fatalities) : 0;
-
-      const baseText = [
-        'ACLED', name, iso3,
-        e.event_type||'', e.sub_event_type||'',
-        e.actor1||'', e.actor2||'',
-        e.notes||'',
-        'fatalities '+fat
-      ].join(' | ');
-
-      const hdp = hdpScore(baseText);
-      const c15 = classifyC15(baseText,3);
-      const risk = analyzeRiskAndConflict(baseText);
-
-      let heat = 1;
-      if(fat>=10) heat=5;
-      else if(fat>=3) heat=4;
-      else if(fat>=1) heat=3;
-      else heat=2;
-      risk.conflictIndex = Math.max(risk.conflictIndex||1, heat);
-
-      out.push({
-        id: 'acled-'+(e.event_id || (iso3+'-'+when+'-'+Math.random().toString(16).slice(2))),
-        sourceType: 'acled',
-        title: `ACLED · ${title}`,
-        url: 'https://acleddata.com',
-        created: when || new Date().toISOString(),
-        country: name,
-        iso3: iso3,
-        source: 'ACLED',
-        theme: 'Conflict & Security',
-        type: 'Event',
-        body: `Date: ${when}\nLocation: ${loc}\nActors: ${(e.actor1||'')}${(e.actor2?(' vs '+e.actor2):'')}\nNotes: ${(e.notes||'')}\nFatalities: ${fat}`,
-        hdp, c15,
-        risk,
-        riskScore: risk.riskScore,
-        conflictIndex: risk.conflictIndex,
-        lat, lon,
-        fatalities: fat,
-        event_type: e.event_type || '',
-        sub_event_type: e.sub_event_type || '',
-        location: e.location || '',
-        admin1: e.admin1 || ''
+  if(showUCDP){
+    const pts = filtered.filter(it=>it.sourceType==='ucdp' && it.lat!=null && it.lon!=null).slice(0, 2000);
+    pts.forEach(ev=>{
+      const {radius, color} = ucdpStyleFromDeaths(ev.deaths);
+      const m = L.circleMarker([ev.lat, ev.lon],{
+        radius, color, weight:1.2, fillColor: color, fillOpacity: .50
       });
+      const when = String(ev.created||'').slice(0,10);
+      const nm = (RECAP_MAP.find(x=>x.iso3===ev.iso3)||{}).name || ev.iso3 || '';
+      m.bindPopup(`
+        <div style="font-family:system-ui; font-size:13px; line-height:1.35">
+          <div style="font-weight:700;margin-bottom:6px;">${escapeHTML(ev.title||'UCDP Event')}</div>
+          <div style="color:#8aa0bb">${escapeHTML(when)} · ${escapeHTML(nm)} (${escapeHTML(ev.iso3||'')})</div>
+          <div style="margin-top:6px">${escapeHTML(ev.type||'')}</div>
+          <div style="margin-top:4px">Deaths: <b>${escapeHTML(String(ev.deaths||0))}</b></div>
+          <div style="margin-top:6px;"><span class="small">Click = Filter Country</span></div>
+        </div>
+      `);
+      m.on('click', ()=>{ if(ev.iso3) setCountryFilter(ev.iso3); });
+      m.addTo(ucdpLayer);
     });
   }
-
-  out.sort((a,b)=> (Date.parse(b.created)||0) - (Date.parse(a.created)||0));
-  return out.slice(0, hardMax);
 }
+document.getElementById('map-refresh').onclick = renderMap;
+document.getElementById('map-metric').onchange = renderMap;
+document.getElementById('map-agg').onchange = renderMap;
+document.getElementById('layer-country').onchange = renderMap;
+document.getElementById('layer-acled').onchange = renderMap;
+document.getElementById('layer-ucdp').onchange = renderMap;
 
 /* =============================
-   Rendering
+   Items rendering
 ============================= */
 function openSummary(it){
   const meta = [it.country, it.iso3?('('+it.iso3+')'):'', it.source, it.theme, it.type, it.sourceType].filter(Boolean).join(' · ');
@@ -1179,7 +1176,6 @@ function openSummary(it){
   document.getElementById('m-link').href = it.url || '#';
   modal.style.display='flex';
 }
-
 function renderTable(items){
   const box = document.getElementById('results');
   if(!items.length){
@@ -1231,6 +1227,9 @@ function renderTable(items){
   });
 }
 
+/* =============================
+   Dashboard
+============================= */
 function pctBar(el, numerator, denom){
   const p = denom>0 ? (numerator/denom)*100 : 0;
   el.style.width = clamp(p, 0, 100).toFixed(1) + '%';
@@ -1239,11 +1238,10 @@ function formatTopList(arr){
   if(!arr.length) return '—';
   return arr.map(x=>x.label).join(' · ');
 }
-
 function updateDashboard(filtered){
   const total = filtered.length;
   const reports = filtered.filter(x=>x.sourceType==='reliefweb').length;
-  const events = filtered.filter(x=>x.sourceType==='acled').length;
+  const events = filtered.filter(x=>x.sourceType==='acled' || x.sourceType==='ucdp').length;
 
   const high = filtered.filter(x=>x.risk && x.risk.riskLevel==='high').length;
   const c4 = filtered.filter(x=>(x.conflictIndex||0)>=4).length;
@@ -1262,38 +1260,6 @@ function updateDashboard(filtered){
     .sort((a,b)=>b[1]-a[1])
     .slice(0,3)
     .map(([code,n])=>({label:`${code}(${n})`, code, n}));
-
-  const byC = {};
-  filtered.forEach(it=>{
-    const iso = it.iso3 || 'UNK';
-    byC[iso] = (byC[iso]||0) + 1;
-  });
-  const topCountries = Object.entries(byC)
-    .sort((a,b)=>b[1]-a[1])
-    .slice(0,5)
-    .map(([iso,n])=>{
-      const nm = (RECAP_MAP.find(x=>x.iso3===iso)||{}).name || iso;
-      return {label:`${nm}(${n})`, iso, n};
-    });
-
-  const byP = {};
-  filtered.forEach(it=>{
-    if(it.sourceType!=='reliefweb') return;
-    parsePartnersFromSourceField(it.source).forEach(org=>{
-      if(!org) return;
-      byP[org] = (byP[org]||0) + 1;
-    });
-  });
-  const topPartners = Object.entries(byP)
-    .sort((a,b)=>b[1]-a[1])
-    .slice(0,5)
-    .map(([org,n])=>({label:`${org}(${n})`, org, n}));
-
-  const latest = filtered
-    .map(it=>Date.parse(it.created))
-    .filter(t=>!isNaN(t))
-    .sort((a,b)=>b-a)[0];
-  const latestStr = latest ? new Date(latest).toISOString().slice(0,10) : '—';
 
   document.getElementById('kpi-items').textContent = String(total);
   document.getElementById('kpi-reports').textContent = String(reports);
@@ -1314,17 +1280,478 @@ function updateDashboard(filtered){
     return `${x.code}: ${nm}`;
   }).join(' · ') : 'Top 3';
 
-  document.getElementById('side-countries').textContent = formatTopList(topCountries);
-  document.getElementById('side-partners').textContent = formatTopList(topPartners);
-  document.getElementById('side-recent').textContent = latestStr;
-
   const scopeParts = [];
   if(selectedISO3) scopeParts.push('Country='+selectedISO3);
   if(selectedPartner) scopeParts.push('Partner='+selectedPartner);
   if(listSpecialMode) scopeParts.push('Mode='+listSpecialMode);
   document.getElementById('dash-scope').textContent = 'Scope: ' + (scopeParts.length ? scopeParts.join(', ') : 'All');
   document.getElementById('dash-window').textContent =
-    'Window: ' + String(document.getElementById('days').value||'') + ' Days';
+    'Window: ' + String(document.getElementById('years').value||'') + ' Years';
+}
+
+/* =============================
+   Indicators: WB / SDG / FTS / DTM (Selected Country)
+============================= */
+async function fetchWorldBankValue(iso3, indicator, year){
+  // Uses WB country code (2-letter) normally; many ISO3 work but not guaranteed.
+  // We map some ISO3 to WB 2-letter when possible; fallback uses ISO3.
+  const ISO3_TO_WB = {
+    BDI:'BI', CAF:'CF', COM:'KM', GIN:'GN', KEN:'KE', MLI:'ML',
+    STP:'ST', SOM:'SO', SSD:'SS', ZWE:'ZW', ARM:'AM', IRN:'IR',
+    JOR:'JO', LBN:'LB', PSE:'PS', SYR:'SY', YEM:'YE', PNG:'PG',
+    SLB:'SB', TLS:'TL'
+  };
+  const wbC = ISO3_TO_WB[iso3] || iso3;
+  const url = `https://api.worldbank.org/v2/country/${encodeURIComponent(wbC)}/indicator/${encodeURIComponent(indicator)}?format=json&per_page=60`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('World Bank HTTP '+res.status);
+  const json = await res.json();
+  const rows = Array.isArray(json) ? json[1] : null;
+  if(!Array.isArray(rows)) return null;
+
+  // pick requested year first, else most recent non-null
+  let hit = rows.find(r=>String(r.date)===String(year) && r.value!=null);
+  if(!hit) hit = rows.find(r=>r.value!=null);
+  if(!hit) return null;
+
+  return { year: hit.date, value: hit.value, unit: (hit.indicator && hit.indicator.value) ? hit.indicator.value : '' };
+}
+
+async function fetchUNSDGValue(iso3, indicatorOrSeries){
+  // UN SDG API is broad; this is a minimal "try" fetch.
+  // If indicatorOrSeries is empty -> return null.
+  if(!indicatorOrSeries) return null;
+
+  // Attempt using Indicator/Data endpoint with areaCode filter if possible.
+  // We do not assume code system; user can put a valid Indicator code; we fetch and pick first matching.
+  const url = new URL('https://unstats.un.org/SDGAPI/v1/sdg/Indicator/Data');
+  // Many SDG API filters use "areaCode" numeric; we don't have that mapping here.
+  // So we fetch by indicator only and then filter by geoAreaName matching our country name.
+  url.searchParams.set('indicator', indicatorOrSeries);
+
+  const res = await fetch(url.toString());
+  if(!res.ok) throw new Error('UN SDG HTTP '+res.status);
+  const json = await res.json();
+  const data = json && (json.data || json) ? (json.data || json) : null;
+  if(!Array.isArray(data)) return null;
+
+  const cname = (RECAP_MAP.find(x=>x.iso3===iso3)||{}).name || '';
+  const rows = data.filter(r=>{
+    const g = (r.geoAreaName || r.GeoAreaName || r.geoArea || '').toString();
+    return cname && g.toLowerCase() === cname.toLowerCase();
+  });
+
+  const pick = (rows.length ? rows : data).find(r=>{
+    const v = r.value ?? r.Value ?? r.val;
+    return v!=null && v!=='' && isFinite(Number(v));
+  });
+  if(!pick) return null;
+
+  const val = Number(pick.value ?? pick.Value ?? pick.val);
+  const y = pick.timePeriodStart ?? pick.timePeriod ?? pick.year ?? pick.TimePeriod ?? '';
+  const series = pick.series ?? pick.seriesCode ?? pick.SeriesCode ?? indicatorOrSeries;
+
+  return { year: y, value: val, series: series };
+}
+
+async function fetchFTSValue(year){
+  const url = `https://api.fts.unocha.org/api/v1/appeal/year/${encodeURIComponent(year)}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('FTS HTTP '+res.status);
+  const json = await res.json();
+  // Minimal: show number of appeals + total requirements if present
+  const data = json && (json.data || json) ? (json.data || json) : null;
+  if(!data) return null;
+
+  const appeals = Array.isArray(data) ? data : (data.appeals || data.data || []);
+  const n = Array.isArray(appeals) ? appeals.length : null;
+
+  // try to sum "requirements" or "funding" if present
+  let reqSum = 0, hasReq=false;
+  if(Array.isArray(appeals)){
+    appeals.forEach(a=>{
+      const r = Number(a.requirements ?? a.total_requirements ?? a.requirementsUsd ?? NaN);
+      if(isFinite(r)){ reqSum += r; hasReq=true; }
+    });
+  }
+  return { year, appeals: n, requirements: hasReq ? reqSum : null };
+}
+
+async function fetchDTMValue(url){
+  if(!url) return null;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('DTM HTTP '+res.status);
+  const json = await res.json();
+  // Minimal: show JSON size or a top-level count if exists
+  const str = JSON.stringify(json);
+  const kb = Math.round(str.length/1024);
+  let hint = null;
+  if(json && typeof json==='object'){
+    if(Array.isArray(json.data)) hint = 'data[] = '+json.data.length;
+    else if(Array.isArray(json.results)) hint = 'results[] = '+json.results.length;
+    else hint = 'object';
+  }
+  return { kb, hint };
+}
+
+async function refreshSelectedIndicators(){
+  const iso3 = selectedISO3;
+  const year = Number(document.getElementById('ind-year').value||2024);
+  const wbInd = (document.getElementById('wb-ind').value||'').trim();
+  const sdgInd = (document.getElementById('sdg-ind').value||'').trim();
+  const ftsYear = Number(document.getElementById('fts-year').value||2024);
+  const cfg = loadCfg();
+  const dtmUrl = (document.getElementById('dtm-url').value||cfg.dtmUrl||'').trim();
+
+  // reset labels
+  document.getElementById('ind-wb-s').textContent = 'Indicator: ' + (wbInd || '—');
+  document.getElementById('ind-sdg-s').textContent = 'Indicator: ' + (sdgInd || '—');
+  document.getElementById('ind-fts-s').textContent = 'Year: ' + String(ftsYear);
+  document.getElementById('ind-dtm-s').textContent = 'Endpoint: ' + (dtmUrl ? 'Set' : '—');
+
+  // If no country selected, show dashes
+  if(!iso3){
+    document.getElementById('ind-wb').textContent = '—';
+    document.getElementById('ind-sdg').textContent = '—';
+    document.getElementById('ind-fts').textContent = '—';
+    document.getElementById('ind-dtm').textContent = '—';
+    return;
+  }
+
+  // WB
+  if(document.getElementById('use-worldbank').checked){
+    try{
+      const r = await fetchWorldBankValue(iso3, wbInd, year);
+      document.getElementById('ind-wb').textContent = r ? (Number(r.value).toLocaleString() + ' ('+r.year+')') : 'No Data';
+    }catch(e){
+      document.getElementById('ind-wb').textContent = 'Error';
+    }
+  }else{
+    document.getElementById('ind-wb').textContent = '—';
+  }
+
+  // SDG
+  if(document.getElementById('use-unsdg').checked){
+    try{
+      const r = await fetchUNSDGValue(iso3, sdgInd);
+      document.getElementById('ind-sdg').textContent = r ? (Number(r.value).toLocaleString() + (r.year?(' ('+r.year+')'):'') ) : 'No Data';
+    }catch(e){
+      document.getElementById('ind-sdg').textContent = 'Error';
+    }
+  }else{
+    document.getElementById('ind-sdg').textContent = '—';
+  }
+
+  // FTS (not strictly country specific with this endpoint, but provides context)
+  if(document.getElementById('use-fts').checked){
+    try{
+      const r = await fetchFTSValue(ftsYear);
+      if(!r){ document.getElementById('ind-fts').textContent = 'No Data'; }
+      else{
+        const req = (r.requirements!=null) ? (' · Req $'+Math.round(r.requirements).toLocaleString()) : '';
+        document.getElementById('ind-fts').textContent = `Appeals ${r.appeals ?? '—'}${req}`;
+      }
+    }catch(e){
+      document.getElementById('ind-fts').textContent = 'Error';
+    }
+  }else{
+    document.getElementById('ind-fts').textContent = '—';
+  }
+
+  // DTM (endpoint depends on user config)
+  if(document.getElementById('use-dtm').checked){
+    if(!dtmUrl){ document.getElementById('ind-dtm').textContent = 'No Endpoint'; }
+    else{
+      try{
+        const r = await fetchDTMValue(dtmUrl);
+        document.getElementById('ind-dtm').textContent = r ? (`${r.hint || 'ok'} · ~${r.kb} KB`) : 'No Data';
+      }catch(e){
+        document.getElementById('ind-dtm').textContent = 'Error';
+      }
+    }
+  }else{
+    document.getElementById('ind-dtm').textContent = '—';
+  }
+}
+
+/* =============================
+   Fetch: ReliefWeb / ACLED / UCDP
+============================= */
+async function fetchReliefWeb(daySpan, limit){
+  const url = 'https://api.reliefweb.int/v1/reports?appname=' + encodeURIComponent(APPNAME);
+  const body = {
+    limit: Math.min(limit, 1000),
+    offset: 0,
+    filter:{ operator:'AND', conditions:[ {field:'country.iso3', value: iso3ForQuery()} ] },
+    fields:{ include:[
+      'id','title','url','body','body-html',
+      'country','country.iso3',
+      'source','theme','disaster_type','date.created'
+    ]},
+    sort:['date.created:desc']
+  };
+
+  const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if(!res.ok){
+    const t = await res.text().catch(()=> '');
+    throw new Error('ReliefWeb HTTP '+res.status+' :: '+t.slice(0,220));
+  }
+  const json = await res.json();
+  const data = json.data || [];
+  const sinceMillis = Date.now() - daySpan*86400000;
+
+  const items = data.map(r=>{
+    const f=r.fields||{};
+    const rawHtml=(f['body-html']||'').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ');
+    const bodyText=(f.body && String(f.body).trim().length>0) ? f.body : rawHtml;
+
+    const countryArr = (f.country||[]);
+    const iso3 = inferIso3(countryArr);
+
+    const metaTxt = [
+      f.title||'',
+      (f.theme||[]).map(t=>t.name).join(', '),
+      (f.disaster_type||[]).map(d=>d.name).join(', '),
+      (f.source||[]).map(s=>s.name).join(', '),
+      countryArr.map(c=>c.name).join(', ')
+    ].join(' | ');
+
+    const baseText = metaTxt + ' ' + bodyText;
+    const hdp = hdpScore(baseText);
+    const c15 = classifyC15(baseText,3);
+    const risk = analyzeRiskAndConflict(baseText);
+
+    return {
+      id: 'rw-'+r.id,
+      sourceType: 'reliefweb',
+      title: f.title||'(Untitled)',
+      url: f.url||'',
+      created: f['date.created']||'',
+      country: countryArr.map(c=>c.name).join(', '),
+      iso3: iso3,
+      source: (f.source||[]).map(s=>s.name).join(', '),
+      theme: (f.theme||[]).map(t=>t.name).join(', '),
+      type: (f.disaster_type||[]).map(d=>d.name).join(', '),
+      body: bodyText,
+      hdp, c15,
+      risk,
+      riskScore: risk.riskScore,
+      conflictIndex: risk.conflictIndex
+    };
+  }).filter(it=>{
+    const t = Date.parse(it.created);
+    return isNaN(t) ? true : (t>=sinceMillis);
+  });
+
+  return items;
+}
+
+async function fetchACLED(daySpan, totalLimit){
+  const cfg = loadCfg();
+  const key = (document.getElementById('acled-key').value||cfg.acledKey||'').trim();
+  const email = (document.getElementById('acled-email').value||cfg.acledEmail||'').trim();
+  if(!key || !email) return [];
+
+  const iso3s = iso3ForQuery();
+  const since = new Date(Date.now() - daySpan*86400000);
+  const sinceStr = since.toISOString().slice(0,10);
+
+  const hardMax = Math.min(Math.max(200, totalLimit), 2000);
+  const out = [];
+
+  for(const iso3 of iso3s){
+    if(out.length >= hardMax) break;
+
+    const per = Math.min(500, hardMax - out.length);
+    const url = new URL('https://api.acleddata.com/acled/read');
+    url.searchParams.set('key', key);
+    url.searchParams.set('email', email);
+    url.searchParams.set('iso', iso3);
+    url.searchParams.set('event_date', sinceStr + '|');
+    url.searchParams.set('limit', String(per));
+    url.searchParams.set('sort', 'event_date:desc');
+
+    const res = await fetch(url.toString());
+    if(!res.ok){
+      const t = await res.text().catch(()=> '');
+      throw new Error('ACLED HTTP '+res.status+' ('+iso3+') :: '+t.slice(0,220));
+    }
+    const json = await res.json();
+    const events = (json.data || []);
+
+    events.forEach(e=>{
+      if(out.length >= hardMax) return;
+
+      const lat = safeNum(e.latitude);
+      const lon = safeNum(e.longitude);
+      if(lat==null || lon==null) return;
+
+      const name = (RECAP_MAP.find(x=>x.iso3===iso3)||{}).name || iso3;
+      const title = `${e.event_type || 'Event'}${e.sub_event_type ? ' · '+e.sub_event_type : ''}`;
+      const when = e.event_date || '';
+      const loc = [e.location, e.admin1].filter(Boolean).join(', ');
+      const fat = safeNum(e.fatalities) ?? 0;
+
+      const baseText = [
+        'ACLED', name, iso3,
+        e.event_type||'', e.sub_event_type||'',
+        e.actor1||'', e.actor2||'',
+        e.notes||'',
+        'fatalities '+fat
+      ].join(' | ');
+
+      const hdp = hdpScore(baseText);
+      const c15 = classifyC15(baseText,3);
+      const risk = analyzeRiskAndConflict(baseText);
+
+      // event-based conflict heat boost
+      let heat = 2;
+      if(fat>=25) heat=5;
+      else if(fat>=10) heat=4;
+      else if(fat>=1) heat=3;
+      risk.conflictIndex = Math.max(risk.conflictIndex||1, heat);
+
+      out.push({
+        id: 'acled-'+(e.event_id || (iso3+'-'+when+'-'+Math.random().toString(16).slice(2))),
+        sourceType: 'acled',
+        title: `ACLED · ${title}`,
+        url: 'https://acleddata.com',
+        created: when || new Date().toISOString(),
+        country: name,
+        iso3: iso3,
+        source: 'ACLED',
+        theme: 'Conflict & Security',
+        type: 'Event',
+        body: `Date: ${when}\nLocation: ${loc}\nActors: ${(e.actor1||'')}${(e.actor2?(' vs '+e.actor2):'')}\nNotes: ${(e.notes||'')}\nFatalities: ${fat}`,
+        hdp, c15,
+        risk,
+        riskScore: risk.riskScore,
+        conflictIndex: risk.conflictIndex,
+        lat, lon,
+        fatalities: fat,
+        event_type: e.event_type || '',
+        sub_event_type: e.sub_event_type || '',
+        location: e.location || '',
+        admin1: e.admin1 || ''
+      });
+    });
+  }
+
+  out.sort((a,b)=> (Date.parse(b.created)||0) - (Date.parse(a.created)||0));
+  return out.slice(0, hardMax);
+}
+
+async function fetchUCDP(daySpan, totalLimit){
+  // Public API. Minimal implementation:
+  // - Pull latest pages (pagesize=100)
+  // - Keep only events that match our 20 countries by country name (best-effort)
+  // - Plot points if lat/long present (varies by endpoint/version)
+  const sinceMillis = Date.now() - daySpan*86400000;
+  const maxKeep = Math.min(totalLimit, 1500);
+
+  // endpoint example: https://ucdpapi.pcr.uu.se/api/gedevents/25.1?pagesize=100
+  const base = 'https://ucdpapi.pcr.uu.se/api/gedevents/25.1';
+  const pageSize = 100;
+  const pagesToTry = 10; // up to 1000 events (best-effort)
+
+  const wantCountries = new Set(RECAP_MAP.map(x=>x.name.toLowerCase()));
+  const isoByName = COUNTRY_NAME_TO_ISO3;
+
+  const out = [];
+  for(let page=1; page<=pagesToTry; page++){
+    if(out.length >= maxKeep) break;
+    const url = new URL(base);
+    url.searchParams.set('pagesize', String(pageSize));
+    url.searchParams.set('page', String(page));
+
+    const res = await fetch(url.toString());
+    if(!res.ok){
+      const t = await res.text().catch(()=> '');
+      throw new Error('UCDP HTTP '+res.status+' :: '+t.slice(0,220));
+    }
+    const json = await res.json();
+    const rows = (json && (json.Result || json.result || json.data || json)) || [];
+    const arr = Array.isArray(rows) ? rows : (rows.Result || rows.data || []);
+
+    if(!Array.isArray(arr) || !arr.length) break;
+
+    for(const r of arr){
+      if(out.length >= maxKeep) break;
+
+      // date fields vary
+      const d = (r.date_start || r.dateStart || r.date || r.event_date || r.time || r.year || '');
+      const created = d ? String(d) : '';
+      const t = Date.parse(created);
+      if(!isNaN(t) && t < sinceMillis) continue;
+
+      // Country name fields vary
+      const cn =
+        (r.country || r.country_name || r.countryname || r.country_name1 || r.country_name2 ||
+         r.side_a_country || r.side_b_country || r.location_country || r.geo_area || '').toString();
+      const cnLow = cn.toLowerCase();
+
+      // try match our 20 country names anywhere in text
+      let matchedName = null;
+      for(const n of wantCountries){
+        if(cnLow.includes(n)){ matchedName = n; break; }
+      }
+      // if not found, try a broader scan in row JSON
+      if(!matchedName){
+        const blob = JSON.stringify(r).toLowerCase();
+        for(const n of wantCountries){
+          if(blob.includes(n)){ matchedName = n; break; }
+        }
+      }
+      if(!matchedName) continue;
+
+      const iso3 = isoByName[matchedName] || '';
+      const name = (RECAP_MAP.find(x=>x.iso3===iso3)||{}).name || matchedName;
+
+      const lat = safeNum(r.latitude ?? r.lat ?? r.ged_latitude ?? r.geom_lat ?? null);
+      const lon = safeNum(r.longitude ?? r.lon ?? r.ged_longitude ?? r.geom_lon ?? null);
+
+      // deaths fields vary
+      const deaths = safeNum(r.best ?? r.deaths ?? r.deaths_a ?? r.deaths_b ?? r.fatalities ?? r.deaths_total ?? 0) ?? 0;
+
+      const title = r.event_type ? String(r.event_type) : (r.type_of_violence ? ('Violence ' + r.type_of_violence) : 'UCDP Event');
+
+      const baseText = ['UCDP', name, iso3, title, 'deaths '+deaths, JSON.stringify(r).slice(0,800)].join(' | ');
+      const hdp = hdpScore(baseText);
+      const c15 = classifyC15(baseText,3);
+      const risk = analyzeRiskAndConflict(baseText);
+
+      // event-based conflict heat boost
+      let heat = 2;
+      if(deaths>=25) heat=5;
+      else if(deaths>=10) heat=4;
+      else if(deaths>=1) heat=3;
+      risk.conflictIndex = Math.max(risk.conflictIndex||1, heat);
+
+      out.push({
+        id: 'ucdp-'+(r.id || r.ged_id || (iso3+'-'+created+'-'+Math.random().toString(16).slice(2))),
+        sourceType: 'ucdp',
+        title: `UCDP · ${title}`,
+        url: 'https://ucdp.uu.se',
+        created: created || new Date().toISOString(),
+        country: name,
+        iso3,
+        source: 'UCDP',
+        theme: 'Conflict & Peace',
+        type: 'Event',
+        body: JSON.stringify(r, null, 2),
+        hdp, c15,
+        risk,
+        riskScore: risk.riskScore,
+        conflictIndex: risk.conflictIndex,
+        lat: (lat==null?null:lat),
+        lon: (lon==null?null:lon),
+        deaths
+      });
+    }
+  }
+
+  out.sort((a,b)=> (Date.parse(b.created)||0) - (Date.parse(a.created)||0));
+  return out.slice(0, maxKeep);
 }
 
 /* =============================
@@ -1342,24 +1769,34 @@ function applyFiltersAndRender(){
 ============================= */
 async function runFetch(){
   const status = document.getElementById('status');
-  const mode = document.getElementById('src-mode').value;
-
-  const daySpan = Number(document.getElementById('days').value || 3650);
-  const limit = MAX_ITEMS;
-
   status.textContent = 'Fetching...';
   status.className = 'small';
+
+  const years = Number(document.getElementById('years').value || 10);
+  const daySpan = Math.round(years * 365.25);
+  const limit = MAX_ITEMS;
+
+  const useRW   = document.getElementById('use-reliefweb').checked;
+  const useA    = document.getElementById('use-acled').checked;
+  const useU    = document.getElementById('use-ucdp').checked;
+
+  // indicator fetch happens separately (selected country)
+  // toggles: worldbank / unsdg / fts / dtm are used in refreshSelectedIndicators()
 
   try{
     let all = [];
 
-    if(mode==='reliefweb' || mode==='both'){
+    if(useRW){
       const rw = await fetchReliefWeb(daySpan, limit);
       all = all.concat(rw);
     }
-    if(mode==='acled' || mode==='both'){
+    if(useA){
       const a = await fetchACLED(daySpan, limit);
       all = all.concat(a);
+    }
+    if(useU){
+      const u = await fetchUCDP(daySpan, limit);
+      all = all.concat(u);
     }
 
     all.sort((a,b)=> (Date.parse(b.created)||0) - (Date.parse(a.created)||0));
@@ -1368,46 +1805,46 @@ async function runFetch(){
     currentItems = all;
 
     renderPartnerDropdown(currentItems);
-    document.getElementById('filter-country').value = selectedISO3 || "";
-    document.getElementById('filter-partner').value = selectedPartner || "";
+
+    // sensible map layer defaults
+    document.getElementById('layer-acled').checked = useA;
+    document.getElementById('layer-ucdp').checked  = useU;
 
     status.textContent = `Done · ${currentItems.length} Items`;
     applyFiltersAndRender();
+
+    // refresh indicators panel (if a country already selected)
+    await refreshSelectedIndicators();
+
   }catch(e){
     status.textContent = 'Error';
     status.className = 'small err';
     document.getElementById('results').innerHTML = `<div class="small err">${escapeHTML(e.message || String(e))}</div>`;
     countryLayer.clearLayers();
     acledLayer.clearLayers();
+    ucdpLayer.clearLayers();
   }
 }
 document.getElementById('fetch').onclick = runFetch;
 
 /* =============================
-   Map controls
+   Indicators refresh triggers
 ============================= */
-document.getElementById('map-refresh').onclick = renderMap;
-document.getElementById('map-layer').onchange = renderMap;
-document.getElementById('map-metric').onchange = renderMap;
-document.getElementById('map-agg').onchange = renderMap;
-
-/* =============================
-   Map render (requires layers & helpers above)
-============================= */
-function renderCountryDropdownValue(){
-  document.getElementById('filter-country').value = selectedISO3 || "";
-}
-function renderPartnerDropdownValue(){
-  document.getElementById('filter-partner').value = selectedPartner || "";
-}
-
-/* Map mode uses existing renderMap() above */
+document.getElementById('use-worldbank').onchange = refreshSelectedIndicators;
+document.getElementById('use-unsdg').onchange = refreshSelectedIndicators;
+document.getElementById('use-fts').onchange = refreshSelectedIndicators;
+document.getElementById('use-dtm').onchange = refreshSelectedIndicators;
+document.getElementById('wb-ind').onchange = refreshSelectedIndicators;
+document.getElementById('ind-year').onchange = refreshSelectedIndicators;
+document.getElementById('sdg-ind').onchange = refreshSelectedIndicators;
+document.getElementById('fts-year').onchange = refreshSelectedIndicators;
+document.getElementById('dtm-url').onchange = refreshSelectedIndicators;
 
 /* =============================
    Init
 ============================= */
 document.getElementById('country-chip').textContent = 'All 20';
-document.getElementById('limit-chip').textContent = 'Max';
+document.getElementById('limit-chip').textContent = 'Max ('+MAX_ITEMS+')';
 updateDashboard([]);
 renderMap();
 </script>
