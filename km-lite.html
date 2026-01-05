@@ -3,527 +3,296 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>km-lite v2.8 — Multi-source (ReliefWeb + ACLED + UCDP + WB + SDG + FTS + DTM)</title>
-
-<!-- Leaflet -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<title>Km-lite v2.3 — Multi-source · Tf-idf · Hdp · Risk · C1–C15</title>
 
 <style>
 :root{
   --bg:#0b0f14;
-  --panel:#0f1620;
-  --panel2:rgba(15,22,32,.55);
   --fg:#e6eef8;
   --mut:#8aa0bb;
-  --line:rgba(255,255,255,.10);
-  --line2:rgba(255,255,255,.16);
-  --shadow: 0 10px 24px rgba(0,0,0,.30);
-
-  --h:#3aa3ff;
-  --d:#61d661;
-  --p:#f2b45a;
+  --line:#253245;
+  --card: rgba(15,22,32,.35);
+  --card2: rgba(15,22,32,.25);
+  --ok:#61d661;
+  --warn:#f2b45a;
+  --bad:#ff5c5c;
+  --chip:#0f1620;
+  --h-col:#3aa3ff;
+  --d-col:#61d661;
+  --p-col:#f2b45a;
   --off:#364254;
-
-  --low:#43c174;
-  --med:#f2b45a;
-  --high:#ff5c5c;
+  --risk-low:#43c174;
+  --risk-med:#f2b45a;
+  --risk-high:#ff5c5c;
+  --conf-low:#61d661;
+  --conf-med:#f2b45a;
+  --conf-high:#ff5c5c;
 }
 
 *{box-sizing:border-box}
-html,body{height:100%}
 body{
-  margin:0; padding:16px;
-  background:var(--bg); color:var(--fg);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial, sans-serif;
-  font-size:13px; letter-spacing:.1px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,Arial,sans-serif;
+  background:var(--bg); color:var(--fg); margin:0; padding:14px;
+  font-size:14px; line-height:1.5;
 }
-.container{max-width:1320px;margin:0 auto}
-h1{font-size:15px;margin:0 0 10px;font-weight:700}
-.small{font-size:12px;color:var(--mut);line-height:1.5}
-.mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
-a{color:#9bd0ff;text-decoration:none}
-a:hover{text-decoration:underline}
-
-input, button, select, textarea{
-  background:var(--panel);
-  color:var(--fg);
-  border:1px solid var(--line);
-  border-radius:10px;
-  padding:.46rem .58rem;
-  font-size:13px;
-  outline:none;
+h2{margin:0 0 10px; font-size:18px; font-weight:750}
+textarea,input,button,select{
+  border-radius:10px; padding:.45rem .6rem; font-size:14px;
+  border:1px solid rgba(255,255,255,.10); background:#0f1620; color:var(--fg)
 }
 button{cursor:pointer}
-button:hover{border-color:var(--line2)}
-textarea{width:100%}
-hr{border:none;border-top:1px solid var(--line); margin:12px 0}
-
-.card{
-  border:1px solid var(--line);
-  background:var(--panel2);
-  border-radius:16px;
-  padding:12px;
-  box-shadow: var(--shadow);
-}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.spread{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-
-.pill{
-  display:inline-flex;align-items:center;gap:6px;
-  border:1px solid var(--line);
-  border-radius:999px;
-  padding:3px 10px;
-  font-size:11px;
-  color:var(--mut);
-}
-.badge{
-  display:inline-block;
-  padding:2px 8px;
-  border:1px solid var(--line);
-  border-radius:999px;
-  font-size:11px;
-  color:var(--mut);
-}
-
-.section-title{
-  font-weight:650;
-  font-size:12px;
-  margin:0 0 8px;
-  color:#dfeaff;
-  letter-spacing:.2px;
-  text-transform:uppercase;
-}
-
-/* Toggle */
-.tgl{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:6px 10px;border:1px solid var(--line);border-radius:14px;
-  background:rgba(15,22,32,.40);
-}
-.tgl input{accent-color:#9bd0ff}
-
-/* KPI tiles */
-.kpi-grid{
-  display:grid;
-  grid-template-columns: repeat(12, minmax(0,1fr));
-  gap:10px;
-}
-.kpi{
-  border:1px solid var(--line);
-  background: rgba(15,22,32,.55);
-  border-radius:16px;
-  padding:12px;
-}
-.kpi .k{font-size:11px;color:var(--mut);display:flex;gap:8px;align-items:center}
-.kpi .v{font-size:18px;font-weight:700;margin-top:8px}
-.kpi .s{font-size:11px;color:#9fb2c8;margin-top:6px;line-height:1.35}
-.kpi .mini{
-  height:8px;border-radius:999px;
-  background: rgba(255,255,255,.06);
-  overflow:hidden;margin-top:10px;
-  border:1px solid rgba(255,255,255,.10);
-}
-.kpi .mini > div{
-  height:100%;
-  width:0%;
-  background: linear-gradient(90deg, rgba(58,163,255,.80), rgba(97,214,97,.75));
-}
-.kpi.clickable{cursor:pointer}
-.kpi.clickable:hover{border-color:var(--line2); transform: translateY(-1px); transition: transform .08s ease}
-
-/* layout */
-.main-grid{
-  display:grid;
-  grid-template-columns: 1fr 460px;
-  gap:12px;
-  align-items:start;
-}
-@media (max-width:1180px){ .main-grid{grid-template-columns:1fr;} }
-
-/* map */
-#map{
-  height:78vh; /* taller */
-  width:100%;
-  border-radius:16px;
-  border:1px solid var(--line);
-  overflow:hidden;
-  background:#0c121a;
-}
-@media (max-width:860px){ #map{height:70vh;} }
-
-/* list */
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{border:1px solid var(--line);padding:8px;vertical-align:top;text-align:left}
-th{background:#0f1620;position:sticky;top:0;z-index:1}
-tbody tr:hover{background:rgba(255,255,255,.03)}
-.title-cell{cursor:pointer;text-decoration:underline}
-
-/* indicators badges */
-.hdp-badge{
-  display:inline-block;
-  padding:2px 7px;
-  border-radius:8px;
-  font-size:11px;
-  font-weight:700;
-  margin-right:4px;
-  color:#000;
-}
-.hdp-off{ background:var(--off); color:#8da0b5; }
-.hdp-H{ background:var(--h); }
-.hdp-D{ background:var(--d); }
-.hdp-P{ background:var(--p); }
-
-.risk-badge, .conf-badge{
-  display:inline-block;
-  padding:2px 8px;
-  border-radius:999px;
-  font-size:11px;
-  font-weight:750;
-  color:#000;
-}
-.risk-low{background:var(--low)}
-.risk-med{background:var(--med)}
-.risk-high{background:var(--high)}
-.conf-low{background:var(--low)}
-.conf-med{background:var(--med)}
-.conf-high{background:var(--high)}
-
-.policy-flag{
-  display:inline-block;
-  padding:1px 7px;
-  border-radius:999px;
-  font-size:10px;
-  border:1px solid var(--med);
-  color:var(--med);
-  margin-left:6px;
-}
-
-.legend{
-  display:flex; gap:10px; flex-wrap:wrap; align-items:center;
-  padding:10px; border:1px solid var(--line); border-radius:14px; background:rgba(15,22,32,.40)
-}
-.dot{width:10px;height:10px;border-radius:999px;display:inline-block;margin-right:6px}
+.small{color:var(--mut);font-size:12px}
+.mono{font-family:ui-monospace,Consolas,Menlo,monospace}
 .err{color:#ffb4b4}
-#status{min-height:16px}
+hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
 
-/* modal */
-.modal{
-  display:none;position:fixed;inset:0;
-  background:rgba(0,0,0,.62);
-  z-index:1000;
-  align-items:center;justify-content:center;
-  padding:16px;
+.flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card{border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:10px;margin-bottom:10px;background:var(--card)}
+.panel{border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:10px;background:var(--card)}
+.badge{
+  display:inline-block;padding:2px 8px;border:1px solid rgba(255,255,255,.12);
+  border-radius:999px;font-size:11px;color:var(--mut);
+  margin-right:6px;margin-bottom:4px
 }
-.modal > div{
-  width:min(980px, 92vw);
-  max-height:84vh;
-  overflow:auto;
-  background:var(--bg);
-  border:1px solid var(--line2);
-  border-radius:16px;
-  padding:16px;
-  box-shadow:0 0 22px rgba(0,0,0,.55);
+.status{
+  display:inline-block; padding:2px 8px; border-radius:999px;
+  font-size:11px; font-weight:650; color:#000;
 }
-.modal h3{margin:0 0 8px;font-size:15px;font-weight:700}
-.modal .meta{margin:0 0 10px;color:var(--mut);font-size:12px}
-pre.wrap{white-space:pre-wrap;margin:0;font-size:13px;line-height:1.6;color:#dce8f7}
+.st-ok{background:var(--ok)}
+.st-warn{background:var(--warn)}
+.st-bad{background:var(--bad)}
 
-.codebox{
-  border:1px solid var(--line);
+.hdp-badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:11px;font-weight:800;margin-right:4px;}
+.hdp-on{color:#000}
+.hdp-H{background:var(--h-col)}
+.hdp-D{background:var(--d-col)}
+.hdp-P{background:var(--p-col)}
+.hdp-off{background:var(--off); color:#8da0b5;}
+
+.risk-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:850;color:#000;}
+.risk-low{background:var(--risk-low)}
+.risk-med{background:var(--risk-med)}
+.risk-high{background:var(--risk-high)}
+.conflict-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:850;color:#000;}
+.conf-low{background:var(--conf-low)}
+.conf-med{background:var(--conf-med)}
+.conf-high{background:var(--conf-high)}
+.policy-flag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;border:1px solid var(--risk-med);color:var(--risk-med);margin-left:6px;}
+
+.stickybar{
+  position:sticky;top:8px;z-index:5;background:var(--bg);
+  border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:10px;margin:10px 0
+}
+
+#rw-results{
+  margin-top:10px;max-height:52vh;overflow:auto;
+  border:1px solid rgba(255,255,255,.10);
+  padding:.6rem;border-radius:14px;background:var(--card2)
+}
+
+table{border-collapse:collapse;width:100%;font-size:13px}
+td,th{border:1px solid rgba(255,255,255,.10);padding:8px;text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:#0f1620;z-index:2}
+
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:1000;align-items:center;justify-content:center;padding:16px}
+.modal>div{background:var(--bg);color:var(--fg);border:1px solid rgba(255,255,255,.12);border-radius:14px;box-shadow:0 0 22px rgba(0,0,0,.55)}
+#summary-box{width:min(820px,92vw);max-height:84vh;overflow:auto;padding:18px}
+#country-box{width:min(860px,92vw);max-height:84vh;overflow:auto;padding:16px}
+.country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px}
+
+.dash-grid{display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:10px;}
+@media (max-width:1100px){ .dash-grid{grid-template-columns:repeat(4,1fr);} }
+@media (max-width:860px){ .dash-grid{grid-template-columns:repeat(2,1fr);} }
+
+.dash-tile{
+  border:1px solid rgba(255,255,255,.10);
   border-radius:14px;
   padding:10px;
-  background:rgba(15,22,32,.35);
+  background: var(--card);
+  cursor:pointer;
+  transition: transform .07s ease;
 }
+.dash-tile:hover{ transform: translateY(-1px); }
+.dash-name{ font-weight:720; font-size:13px; }
+.dash-sub{ color:var(--mut); font-size:11px; margin-top:2px; line-height:1.35; }
+.dash-val{ font-weight:780; font-size:16px; margin-top:8px; }
 
+.mini-bar{height:8px;border-radius:999px;background: rgba(255,255,255,.06);overflow:hidden;margin-top:8px;border:1px solid rgba(255,255,255,.10);}
+.mini-bar > div{height:100%;width:0%;background: linear-gradient(90deg, rgba(58,163,255,.9), rgba(97,214,97,.85));}
+
+.kv{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px}
+@media (max-width:860px){ .kv{grid-template-columns:1fr;} }
+.kv > div{border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:10px;background:var(--card2)}
+.kv .k{color:var(--mut);font-size:11px}
+.kv .v{font-size:16px;font-weight:780;margin-top:6px}
+
+a{color:#9bd0ff}
 </style>
 </head>
 
 <body>
-<div class="container">
-  <h1>recap km-lite v2.8</h1>
+<h2>Recap Km-lite v2.3 (Multi-source · Tf-idf · Hdp · Risk · C1–C15)</h2>
 
-  <!-- Controls -->
-  <div class="card">
-    <div class="spread">
-      <div class="row">
-        <span class="pill">Window</span>
-        <label class="small">Recent Years</label>
-        <input id="years" type="number" value="10" min="1" step="1" style="width:90px"/>
+<textarea rows="2" style="width:100%" readonly class="small">
+Burundi, Central African Republic, Comoros, Guinea, Kenya, Mali, Sao Tome and Principe, Somalia, South Sudan, Zimbabwe, Armenia, Iran, Jordan, Lebanon, Palestine, Syria, Yemen, Papua New Guinea, Solomon Islands, Timor-Leste
+</textarea>
 
-        <span class="badge" id="limit-chip" title="Maximum Items (Safety Cap)">Max</span>
-
-        <button id="btn-country" title="Collection Target Countries">Country Set</button>
-        <span id="country-chip" class="badge">All 20</span>
-
-        <span class="pill">Filters</span>
-        <label class="small">Country</label>
-        <select id="filter-country" style="min-width:220px">
-          <option value="">All</option>
-        </select>
-
-        <label class="small">Partner</label>
-        <select id="filter-partner" style="min-width:220px">
-          <option value="">All</option>
-        </select>
-
-        <button id="btn-clear-filters" title="Clear Filters">Clear</button>
-      </div>
-
-      <div class="row">
-        <button id="fetch">Fetch</button>
-        <span id="status" class="small"></span>
-      </div>
-    </div>
-
-    <div class="row" style="margin-top:10px">
-      <span class="pill">Data Sources</span>
-
-      <label class="tgl"><input id="use-reliefweb" type="checkbox" checked> ReliefWeb</label>
-      <label class="tgl"><input id="use-acled" type="checkbox"> ACLED</label>
-      <label class="tgl"><input id="use-ucdp" type="checkbox"> UCDP (No Key)</label>
-
-      <label class="tgl"><input id="use-worldbank" type="checkbox"> World Bank</label>
-      <label class="tgl"><input id="use-unsdg" type="checkbox"> UN SDG</label>
-
-      <label class="tgl"><input id="use-fts" type="checkbox"> OCHA FTS</label>
-      <label class="tgl"><input id="use-dtm" type="checkbox"> IOM DTM</label>
-    </div>
-
-    <!-- Keys / Params -->
-    <div class="row" style="margin-top:10px">
-      <div class="codebox" style="flex:1; min-width:320px">
-        <div class="small" style="font-weight:700;margin-bottom:8px">ACLED</div>
-        <div class="row">
-          <label class="small">Api Key</label>
-          <input id="acled-key" placeholder="ACLED_API_KEY" style="min-width:240px; flex:1"/>
-          <label class="small">Email</label>
-          <input id="acled-email" placeholder="you@example.com" style="min-width:220px; flex:1"/>
-          <button id="save-keys">Save</button>
-        </div>
-        <div class="small" style="margin-top:6px">Stored In <span class="mono">localStorage</span>.</div>
-      </div>
-
-      <div class="codebox" style="flex:1; min-width:320px">
-        <div class="small" style="font-weight:700;margin-bottom:8px">Indicators</div>
-        <div class="row">
-          <label class="small">World Bank Indicator</label>
-          <input id="wb-ind" value="NY.GDP.MKTP.CD" style="min-width:220px;flex:1"/>
-          <label class="small">Year</label>
-          <input id="ind-year" type="number" value="2024" style="width:90px"/>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <label class="small">UN SDG Series/Indicator</label>
-          <input id="sdg-ind" placeholder="Example: 16.1.1 Or Series Code" style="min-width:220px;flex:1"/>
-          <span class="small">Shown For Selected Country Only</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="row" style="margin-top:10px">
-      <div class="codebox" style="flex:1; min-width:320px">
-        <div class="small" style="font-weight:700;margin-bottom:8px">OCHA FTS</div>
-        <div class="row">
-          <label class="small">Appeal Year</label>
-          <input id="fts-year" type="number" value="2024" style="width:90px"/>
-          <span class="small">Uses Public API.</span>
-        </div>
-      </div>
-
-      <div class="codebox" style="flex:1; min-width:320px">
-        <div class="small" style="font-weight:700;margin-bottom:8px">IOM DTM</div>
-        <div class="small">
-          DTM API는 배포 환경에 따라 <span class="mono">CORS</span>로 브라우저 직접 호출이 막힐 수 있습니다.<br/>
-          아래에 “DTM JSON Endpoint”를 넣으면 가능한 경우 호출하고, 아니면 에러를 상태창에 표시합니다.
-        </div>
-        <div class="row" style="margin-top:8px">
-          <input id="dtm-url" placeholder="DTM Endpoint (Optional)" style="min-width:260px;flex:1"/>
-          <button id="dtm-clear">Clear</button>
-        </div>
-      </div>
-    </div>
+<div class="panel" style="margin-top:10px">
+  <div class="flex">
+    <label>Recent Years</label>
+    <input id="rw-years" type="number" value="10" min="1" style="width:90px"/>
+    <label>Max Items</label>
+    <input id="rw-limit" type="number" value="1000" min="1" max="1000" style="width:110px"/>
+    <button id="open-country" title="Country Filter">Country Filter</button>
+    <span id="country-chip" class="badge">All 20 Countries</span>
+    <button id="btn-fetch-all">Fetch</button>
+    <span id="rw-status" class="small"></span>
   </div>
 
-  <hr/>
-
-  <!-- Dashboard -->
-  <div class="card">
-    <div class="spread" style="margin-bottom:8px;">
-      <div class="section-title">Dashboard</div>
-      <div class="row">
-        <span class="badge" id="dash-scope">Scope: —</span>
-        <span class="badge" id="dash-window">Window: —</span>
-      </div>
-    </div>
-
-    <div class="kpi-grid">
-      <div class="kpi" style="grid-column: span 3;">
-        <div class="k">Items</div>
-        <div class="v" id="kpi-items">—</div>
-        <div class="s">Reports + Events</div>
-      </div>
-
-      <div class="kpi" style="grid-column: span 3;">
-        <div class="k">ReliefWeb Reports</div>
-        <div class="v" id="kpi-reports">—</div>
-      </div>
-
-      <div class="kpi" style="grid-column: span 3;">
-        <div class="k">ACLED/UCDP Events</div>
-        <div class="v" id="kpi-events">—</div>
-      </div>
-
-      <div class="kpi clickable" id="kpi-high-tile" style="grid-column: span 3;" title="Toggle High Risk Filter">
-        <div class="k">High Risk</div>
-        <div class="v" id="kpi-high">—</div>
-        <div class="mini"><div id="kpi-high-bar"></div></div>
-      </div>
-
-      <div class="kpi clickable" id="kpi-c4-tile" style="grid-column: span 4;" title="Toggle Heat ≥ 4 Filter">
-        <div class="k">Conflict Heat ≥ 4</div>
-        <div class="v" id="kpi-c4">—</div>
-        <div class="mini"><div id="kpi-c4-bar"></div></div>
-      </div>
-
-      <div class="kpi" style="grid-column: span 4;">
-        <div class="k">HDP Signals</div>
-        <div class="v" id="kpi-hdp">—</div>
-        <div class="s">Share Of Items Tagged H / D / P</div>
-      </div>
-
-      <div class="kpi" style="grid-column: span 4;">
-        <div class="k">Top C-Codes</div>
-        <div class="v" id="kpi-codes">—</div>
-        <div class="s" id="kpi-codes-s">Top 3</div>
-      </div>
-
-      <div class="kpi" style="grid-column: span 12;">
-        <div class="legend">
-          <span class="small"><b>Risk</b></span>
-          <span class="small"><span class="dot" style="background:var(--low)"></span>Low</span>
-          <span class="small"><span class="dot" style="background:var(--med)"></span>Med</span>
-          <span class="small"><span class="dot" style="background:var(--high)"></span>High</span>
-          <span class="small" style="margin-left:12px"><b>Conflict</b></span>
-          <span class="small"><span class="dot" style="background:var(--low)"></span>1–2</span>
-          <span class="small"><span class="dot" style="background:var(--med)"></span>3–4</span>
-          <span class="small"><span class="dot" style="background:var(--high)"></span>5</span>
-          <span class="small" style="margin-left:12px"><b>HDP</b></span>
-          <span class="small"><span class="dot" style="background:var(--h)"></span>H</span>
-          <span class="small"><span class="dot" style="background:var(--d)"></span>D</span>
-          <span class="small"><span class="dot" style="background:var(--p)"></span>P</span>
-        </div>
-      </div>
-    </div>
+  <div class="flex" style="margin-top:10px">
+    <label class="small" style="min-width:120px">Proxy Base Url</label>
+    <input id="proxy-base" placeholder="http://127.0.0.1:8787/?url=" style="flex:1;min-width:260px"/>
+    <span class="small">Needed For Ucdp / Fts / Dtm In Browser</span>
   </div>
 
-  <hr/>
-
-  <!-- Main -->
-  <div class="main-grid">
-    <div class="card">
-      <div class="spread" style="margin-bottom:8px;">
-        <div class="section-title">Map</div>
-        <div class="row">
-          <label class="tgl"><input id="layer-country" type="checkbox" checked> Country Aggregates</label>
-          <label class="tgl"><input id="layer-acled" type="checkbox"> ACLED Points</label>
-          <label class="tgl"><input id="layer-ucdp" type="checkbox"> UCDP Points</label>
-
-          <select id="map-metric" title="Country Metric">
-            <option value="conflictIndex">Country: Conflict Heat</option>
-            <option value="riskScore">Country: Risk Score</option>
-          </select>
-          <select id="map-agg" title="Aggregation">
-            <option value="max">Max</option>
-            <option value="mean">Mean</option>
-          </select>
-          <button id="map-refresh">Refresh</button>
-        </div>
-      </div>
-      <div id="map"></div>
+  <div class="flex" style="margin-top:10px;align-items:flex-start">
+    <div style="min-width:220px">
+      <div class="small" style="font-weight:700;margin-bottom:6px">Sources</div>
+      <label class="small"><input type="checkbox" id="src-reliefweb" checked> ReliefWeb</label><br/>
+      <label class="small"><input type="checkbox" id="src-ucdp" checked> Ucdp (Needs Proxy)</label><br/>
+      <label class="small"><input type="checkbox" id="src-fts" checked> Ocha Fts (Hpc Tools)</label><br/>
+      <label class="small"><input type="checkbox" id="src-worldbank"> World Bank</label><br/>
+      <label class="small"><input type="checkbox" id="src-unsdg"> Un Sdg</label><br/>
+      <label class="small"><input type="checkbox" id="src-dtm"> Iom Dtm (Needs Proxy)</label><br/>
     </div>
 
-    <div class="card">
-      <div class="section-title">Selected Country Indicators</div>
-      <div class="small" style="margin-bottom:10px">Selected Country = Filter Country.</div>
-
-      <div class="kpi" style="margin-bottom:10px">
-        <div class="k">World Bank</div>
-        <div class="v" id="ind-wb">—</div>
-        <div class="s" id="ind-wb-s">Indicator: —</div>
-      </div>
-
-      <div class="kpi" style="margin-bottom:10px">
-        <div class="k">UN SDG</div>
-        <div class="v" id="ind-sdg">—</div>
-        <div class="s" id="ind-sdg-s">Indicator: —</div>
-      </div>
-
-      <div class="kpi" style="margin-bottom:10px">
-        <div class="k">OCHA FTS</div>
-        <div class="v" id="ind-fts">—</div>
-        <div class="s" id="ind-fts-s">Year: —</div>
-      </div>
-
-      <div class="kpi">
-        <div class="k">IOM DTM</div>
-        <div class="v" id="ind-dtm">—</div>
-        <div class="s" id="ind-dtm-s">Endpoint: —</div>
+    <div style="flex:1">
+      <div class="small" style="font-weight:700;margin-bottom:6px">Api Endpoints (Editable)</div>
+      <div class="small">Fts Base</div>
+      <input id="fts-base" value="https://api.hpc.tools/v2/public/fts" style="width:100%"/>
+      <div class="small" style="margin-top:6px">Ucdp Base</div>
+      <input id="ucdp-base" value="https://ucdpapi.pcr.uu.se/api/gedevents/25.1" style="width:100%"/>
+      <div class="small" style="margin-top:6px">Un Sdg Base</div>
+      <input id="unsdg-base" value="https://unstats.un.org/SDGAPI/v1/sdg" style="width:100%"/>
+      <div class="small" style="margin-top:6px">World Bank Base</div>
+      <input id="wb-base" value="https://api.worldbank.org/v2" style="width:100%"/>
+      <div class="small" style="margin-top:6px">Dtm Base (Placeholder)</div>
+      <input id="dtm-base" value="https://dtm.iom.int" style="width:100%"/>
+      <div class="small" style="margin-top:6px;color:#9fb2c8">
+        Note: Some Providers Do Not Allow Direct Browser Calls (Cors). Use Proxy When Needed.
       </div>
     </div>
-  </div>
 
-  <hr/>
-
-  <div class="card">
-    <div class="section-title">Items</div>
-    <div id="results" class="small">Fetch를 실행하세요.</div>
-  </div>
-</div>
-
-<!-- Summary Modal -->
-<div id="modal" class="modal">
-  <div>
-    <div class="spread">
-      <div>
-        <h3 id="m-title"></h3>
-        <div id="m-meta" class="meta"></div>
-      </div>
-      <button id="m-close">Close</button>
-    </div>
-    <div id="m-badges" style="margin:10px 0"></div>
-    <pre id="m-sum" class="wrap"></pre>
-    <div style="margin-top:12px">
-      <a id="m-link" href="#" target="_blank" rel="noopener">Open Source</a>
+    <div style="min-width:240px">
+      <div class="small" style="font-weight:700;margin-bottom:6px">Status</div>
+      <div class="small">ReliefWeb <span id="st-reliefweb" class="status st-warn">Idle</span></div>
+      <div class="small">Ucdp <span id="st-ucdp" class="status st-warn">Idle</span></div>
+      <div class="small">Fts <span id="st-fts" class="status st-warn">Idle</span></div>
+      <div class="small">World Bank <span id="st-wb" class="status st-warn">Idle</span></div>
+      <div class="small">Un Sdg <span id="st-unsdg" class="status st-warn">Idle</span></div>
+      <div class="small">Iom Dtm <span id="st-dtm" class="status st-warn">Idle</span></div>
     </div>
   </div>
 </div>
 
-<!-- Country Set Modal -->
+<div id="savebar" class="stickybar flex" style="justify-content:space-between">
+  <div class="small">Select Rows → Save To Notes. Minimal Text, Practical Signals.</div>
+  <div class="flex">
+    <button id="btn-risk-narrative">Generate 30-day Risk Summary</button>
+    <button id="rw-to-notes">Save Selected To Notes</button>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="flex" style="justify-content:space-between;align-items:center">
+    <div class="small"><strong>Country Risk Dashboard</strong> (Last 24 Months)</div>
+    <div class="flex">
+      <select id="dash-metric">
+        <option value="riskScore">Risk</option>
+        <option value="conflictIndex">Conflict Heat</option>
+      </select>
+      <select id="dash-agg">
+        <option value="mean">Mean</option>
+        <option value="max">Max</option>
+      </select>
+      <select id="dash-sort">
+        <option value="desc">Value Desc</option>
+        <option value="name">Country Name</option>
+      </select>
+      <button id="dash-recalc">Recalc</button>
+    </div>
+  </div>
+  <div class="kv">
+    <div><div class="k">Docs (24 Months)</div><div class="v" id="kv-n">—</div></div>
+    <div><div class="k">High Risk Docs</div><div class="v" id="kv-high">—</div></div>
+    <div><div class="k">Conflict Heat ≥ 4</div><div class="v" id="kv-c4">—</div></div>
+  </div>
+  <div id="dash-grid" class="dash-grid" style="margin-top:10px"></div>
+</div>
+
+<div id="rw-results"></div>
+<div id="risk-narrative-box" class="panel small" style="display:none; white-space:pre-wrap; margin-top:12px"></div>
+
+<hr/>
+<div id="notes-panel" class="panel">
+  <div class="flex">
+    <strong>Saved Notes</strong>
+    <input id="notes-q" placeholder="Search" style="flex:1;min-width:180px"/>
+    <button id="notes-refresh">Refresh</button>
+    <button id="notes-clear" title="Delete All Notes">Clear</button>
+  </div>
+  <div id="notes-list" class="small" style="margin-top:10px"></div>
+</div>
+
+<div id="summary-modal" class="modal">
+  <div id="summary-box">
+    <div id="summary-title" style="font-weight:780;font-size:16px;margin-bottom:10px;"></div>
+    <div class="small" id="summary-meta" style="margin-bottom:6px"></div>
+    <div id="summary-hdp" style="margin:10px 0"></div>
+    <div id="summary-content" style="font-size:14px;line-height:1.6;"></div>
+    <div style="margin-top:14px;text-align:right"><button id="summary-close">Close</button></div>
+  </div>
+</div>
+
 <div id="country-modal" class="modal">
-  <div>
-    <div class="spread">
-      <div>
-        <h3>Country Set</h3>
-        <div class="small">체크 후 적용</div>
-      </div>
-      <button id="c-close">Close</button>
+  <div id="country-box">
+    <div class="flex" style="justify-content:space-between">
+      <strong>Country Filter</strong>
+      <div class="small">Select → Apply → Fetch</div>
     </div>
-    <div id="c-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:10px"></div>
-    <div class="row" style="justify-content:flex-end;margin-top:12px">
-      <button id="c-clear">Reset</button>
-      <button id="c-apply">Apply</button>
+    <div class="country-grid" id="country-grid"></div>
+    <div class="flex" style="justify-content:flex-end;margin-top:10px">
+      <button id="country-clear">Reset</button>
+      <button id="country-apply">Apply</button>
+      <button id="country-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="country-detail-modal" class="modal">
+  <div id="country-box" style="width:min(920px,92vw)">
+    <div class="flex" style="justify-content:space-between;align-items:flex-start">
+      <div>
+        <div id="cd-title" style="font-weight:780;font-size:16px"></div>
+        <div id="cd-sub" class="small" style="margin-top:4px"></div>
+      </div>
+      <button id="cd-close">Close</button>
+    </div>
+    <div id="cd-kv" class="kv"></div>
+
+    <div class="panel" style="margin-top:10px">
+      <div class="small" style="font-weight:700;margin-bottom:8px">Recent Items (Top 20)</div>
+      <div id="cd-list" class="small"></div>
+    </div>
+
+    <div class="panel" style="margin-top:10px">
+      <div class="small" style="font-weight:700;margin-bottom:8px">External Signals (Quick Check)</div>
+      <div id="cd-ext" class="small" style="color:#9fb2c8">—</div>
     </div>
   </div>
 </div>
 
 <script>
-/* =============================
-   Config
-============================= */
-const APPNAME = "HyunKim+recap_km_lite+a5Ttg7U8";
-const MAX_ITEMS = 2000; // Max safety cap (browser friendly)
-const LS_KEY = "km_lite_v28_cfg";
-
 /* =============================
    Utils
 ============================= */
@@ -536,12 +305,30 @@ function escapeHTML(s){
     .replace(/'/g,'&#39;');
 }
 function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
-function clamp(x,a,b){ return Math.max(a, Math.min(b, x)); }
-function safeNum(x){ const n=Number(x); return isFinite(n)?n:null; }
+
+function setStatus(id, kind, text){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('st-ok','st-warn','st-bad');
+  el.classList.add(kind==='ok'?'st-ok':kind==='bad'?'st-bad':'st-warn');
+  el.textContent = text;
+}
+
+function getProxyBase(){
+  return (document.getElementById('proxy-base').value || '').trim();
+}
+function proxify(url){
+  const p = getProxyBase();
+  if(!p) return null;
+  return p + encodeURIComponent(url);
+}
 
 /* =============================
-   Countries
+   Constants
 ============================= */
+const APPNAME = "HyunKim+recap_km_lite+a5Ttg7U8";
+const DB_KEY  = "km-lite-db";
+
 const RECAP_NAMES = [
   'Burundi','Central African Republic','Comoros','Guinea','Kenya','Mali',
   'Sao Tome and Principe','Somalia','South Sudan','Zimbabwe',
@@ -556,80 +343,12 @@ const RECAP_ISO3 = [
 ];
 const RECAP_MAP = RECAP_NAMES.map((n,i)=>({name:n,iso3:RECAP_ISO3[i]}));
 
-const COUNTRY_CENTROIDS = {
-  BDI:[-3.3731,29.9189], CAF:[ 6.6111,20.9394], COM:[-11.6455,43.3333],
-  GIN:[10.4362,-10.9407], KEN:[ 0.0236,37.9062], MLI:[17.5707,-3.9962],
-  STP:[ 0.1864, 6.6131], SOM:[ 5.1521,46.1996], SSD:[ 6.8770,31.3070],
-  ZWE:[-19.0154,29.1549], ARM:[40.0691,45.0382], IRN:[32.4279,53.6880],
-  JOR:[30.5852,36.2384], LBN:[33.8547,35.8623], PSE:[31.9522,35.2332],
-  SYR:[34.8021,38.9968], YEM:[15.5527,48.5164], PNG:[-6.3140,143.9555],
-  SLB:[-9.6457,160.1562], TLS:[-8.8742,125.7275]
-};
-
-const COUNTRY_NAME_TO_ISO3 = (() => {
-  const m = {};
-  RECAP_MAP.forEach(x => m[x.name.toLowerCase()] = x.iso3);
-  return m;
-})();
-function inferIso3(countryArr){
-  if(Array.isArray(countryArr)){
-    const hit = countryArr.find(c => c && c.iso3);
-    if(hit && hit.iso3) return String(hit.iso3).toUpperCase();
-    const nm = (countryArr[0] && countryArr[0].name) ? String(countryArr[0].name).toLowerCase() : '';
-    if(nm && COUNTRY_NAME_TO_ISO3[nm]) return COUNTRY_NAME_TO_ISO3[nm];
-  }
-  return '';
-}
-
-/* =============================
-   State
-============================= */
 let pickedISO3 = [];
-let currentItems = [];     // unified list (reliefweb + acled + ucdp)
-let selectedISO3 = "";
-let selectedPartner = "";
-let listSpecialMode = "";  // "", "high", "c4"
-
-function iso3ForQuery(){ return pickedISO3.length ? pickedISO3 : RECAP_ISO3; }
+let currentItems = []; // ReliefWeb-derived items (core for dashboard)
+let extSignals = {};   // { iso3: { ucdp:{...}, fts:{...}, wb:{...}, unsdg:{...}, dtm:{...} } }
 
 /* =============================
-   Config persistence (keys, dtm url)
-============================= */
-function loadCfg(){
-  try{
-    const x = JSON.parse(localStorage.getItem(LS_KEY)||'{}');
-    return x && typeof x==='object' ? x : {};
-  }catch(e){ return {}; }
-}
-function saveCfg(cfg){
-  localStorage.setItem(LS_KEY, JSON.stringify(cfg||{}));
-}
-function initCfgUI(){
-  const cfg = loadCfg();
-  document.getElementById('acled-key').value = cfg.acledKey || '';
-  document.getElementById('acled-email').value = cfg.acledEmail || '';
-  document.getElementById('dtm-url').value = cfg.dtmUrl || '';
-}
-document.getElementById('save-keys').onclick = ()=>{
-  const cfg = loadCfg();
-  cfg.acledKey = (document.getElementById('acled-key').value||'').trim();
-  cfg.acledEmail = (document.getElementById('acled-email').value||'').trim();
-  cfg.dtmUrl = (document.getElementById('dtm-url').value||'').trim();
-  saveCfg(cfg);
-  const st = document.getElementById('status');
-  st.textContent = 'Saved';
-  setTimeout(()=>{ if(st.textContent==='Saved') st.textContent=''; }, 900);
-};
-document.getElementById('dtm-clear').onclick = ()=>{
-  document.getElementById('dtm-url').value = '';
-  const cfg = loadCfg();
-  cfg.dtmUrl = '';
-  saveCfg(cfg);
-};
-initCfgUI();
-
-/* =============================
-   Indicators: HDP
+   HDP + Tf-idf summary (same as your logic)
 ============================= */
 const HDP_DICT = {
   H:['emergency','relief','response','humanitarian','displacement','refugee','cholera','outbreak','famine','flood','earthquake','evacuation','cash assistance','wash cluster','rapid'],
@@ -646,15 +365,12 @@ function hdpScore(text){
 }
 function hbarHTML(score){
   if(!score) return '';
-  const hx = score.H === "yes" ? `<span class="hdp-badge hdp-H">H</span>` : `<span class="hdp-badge hdp-off">H</span>`;
-  const dx = score.D === "yes" ? `<span class="hdp-badge hdp-D">D</span>` : `<span class="hdp-badge hdp-off">D</span>`;
-  const px = score.P === "yes" ? `<span class="hdp-badge hdp-P">P</span>` : `<span class="hdp-badge hdp-off">P</span>`;
+  const hx = score.H === "yes" ? `<span class="hdp-badge hdp-on hdp-H">H</span>` : `<span class="hdp-badge hdp-off">H</span>`;
+  const dx = score.D === "yes" ? `<span class="hdp-badge hdp-on hdp-D">D</span>` : `<span class="hdp-badge hdp-off">D</span>`;
+  const px = score.P === "yes" ? `<span class="hdp-badge hdp-on hdp-P">P</span>` : `<span class="hdp-badge hdp-off">P</span>`;
   return `<div>${hx}${dx}${px}</div>`;
 }
 
-/* =============================
-   Summarization
-============================= */
 function summarizeText(text,maxSentences){
   maxSentences = maxSentences || 5;
   if(!text) return '';
@@ -670,6 +386,7 @@ function summarizeText(text,maxSentences){
       .replace(/[^a-z0-9가-힣\s]/g,' ')
       .split(/\s+/).filter(Boolean);
   }
+
   const stop = new Set([
     'the','and','for','with','that','this','from','are','was','were',
     'have','has','had','of','in','to','on','by','as','is','be','or',
@@ -709,44 +426,18 @@ function summarizeText(text,maxSentences){
 }
 
 /* =============================
-  Risk / Conflict / Policy (Text-based)
+   Risk / Conflict
 ============================= */
 const RISK_DICT = {
-  security: [
-    'security incident','armed group','militia','attack','shelling','airstrike','kidnapping',
-    'detention','harassment','checkpoint','intimidation','armed clashes','violence','threat'
-  ],
-  access: [
-    'access constraint','access restriction','movement restriction','road closure',
-    'inaccessible','denied access','limited access','suspension of operations','evacuation of staff'
-  ],
-  political: [
-    'coup','political crisis','election violence','crackdown','state of emergency',
-    'martial law','sanctions','diplomatic tension'
-  ],
-  logistics: [
-    'supply disruption','pipeline break','stockout','shortage of supplies',
-    'transport disruption','logistical challenge','import restriction'
-  ],
-  climate: [
-    'flood','drought','cyclone','typhoon','landslide','storm surge','heatwave',
-    'climate shock','extreme weather'
-  ],
-  partner: [
-    'governance issue','mismanagement','corruption','fraud','misprocurement',
-    'partner capacity gap','weak management'
-  ]
+  security: ['security incident','armed group','militia','attack','shelling','airstrike','kidnapping','detention','harassment','checkpoint','intimidation','armed clashes','violence','threat'],
+  access: ['access constraint','access restriction','movement restriction','road closure','inaccessible','denied access','limited access','suspension of operations','evacuation of staff'],
+  political: ['coup','political crisis','election violence','crackdown','state of emergency','martial law','sanctions','diplomatic tension'],
+  logistics: ['supply disruption','pipeline break','stockout','shortage of supplies','transport disruption','logistical challenge','import restriction'],
+  climate: ['flood','drought','cyclone','typhoon','landslide','storm surge','heatwave','climate shock','extreme weather'],
+  partner: ['governance issue','mismanagement','corruption','fraud','misprocurement','partner capacity gap','weak management']
 };
-const POLICY_TERMS = [
-  'new regulation','regulation change','policy revision','policy change',
-  'government decree','government directive','ministerial order','new law',
-  'legislation','suspension order','ban on','prohibited','visa restriction','border closure'
-];
-const CONFLICT_TERMS = [
-  'armed clashes','clashes','fighting','battle','frontline','shelling','airstrike',
-  'armed group','militia','non-state armed','violence','attack','ambush','raid',
-  'displacement due to conflict','conflict-affected','hostilities'
-];
+const POLICY_TERMS = ['new regulation','regulation change','policy revision','policy change','government decree','government directive','ministerial order','new law','legislation','suspension order','ban on','prohibited','visa restriction','border closure'];
+const CONFLICT_TERMS = ['armed clashes','clashes','fighting','battle','frontline','shelling','airstrike','armed group','militia','non-state armed','violence','attack','ambush','raid','displacement due to conflict','conflict-affected','hostilities'];
 
 function analyzeRiskAndConflict(text){
   const T = (text || '').toLowerCase();
@@ -779,7 +470,13 @@ function analyzeRiskAndConflict(text){
   if(rawScore >= 18) level = 'high';
   else if(rawScore >= 8) level = 'med';
 
-  // conflict heat by terms
+  let impactBase = 1;
+  if(/security incident|armed group|attack|kidnapping|evacuation of staff|airstrike|shelling/.test(T)) impactBase += 2;
+  if(/access constraint|access restriction|denied access|suspension of operations/.test(T)) impactBase += 1;
+  if(/policy change|regulation change|sanctions|visa restriction|border closure/.test(T)) impactBase += 1;
+  if(rawScore > 20) impactBase += 1;
+  if(impactBase > 5) impactBase = 5;
+
   let conflictScore = 0;
   CONFLICT_TERMS.forEach(term=>{
     const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g');
@@ -792,11 +489,10 @@ function analyzeRiskAndConflict(text){
   else if(conflictScore >= 2) conflictIndex = 3;
   else if(conflictScore >= 1) conflictIndex = 2;
 
-  // policy flag
   let policy = false;
   POLICY_TERMS.forEach(term=>{ if(T.includes(term.toLowerCase())) policy = true; });
 
-  return { riskScore: rawScore, riskLevel: level, riskTags: tags, conflictIndex, policyFlag: policy };
+  return { riskScore: rawScore, riskLevel: level, riskTags: tags, impactScore: impactBase, conflictIndex, policyFlag: policy };
 }
 
 function renderRiskBadge(r){
@@ -808,33 +504,34 @@ function renderRiskBadge(r){
 }
 function renderConflictBadge(idx){
   if(!idx) idx = 1;
-  let cls='conf-low';
-  if(idx<=2) cls='conf-low';
-  else if(idx<=4) cls='conf-med';
-  else cls='conf-high';
-  return `<span class="conf-badge ${cls}">Heat ${idx}</span>`;
+  let cls = 'conf-low', label = '';
+  if(idx <= 2){ cls='conf-low'; label='Heat '+idx; }
+  else if(idx <= 4){ cls='conf-med'; label='Heat '+idx; }
+  else { cls='conf-high'; label='Heat 5'; }
+  return `<span class="conflict-badge ${cls}">${label}</span>`;
 }
 
 /* =============================
-  c1~c15
+   C1–C15
 ============================= */
 const CODES = {
-  C1:{name:'사업·프로젝트 개요 & 배경',core:['background','project overview','context analysis','needs assessment','맥락','배경'],related:['objective','goal','목표'],ref:['overview']},
-  C2:{name:'이해관계자 분석',core:['stakeholder analysis','actor mapping','이해관계자'],related:['partner','community'],ref:['coordination']},
-  C3:{name:'논리모형 & 성과경로',core:['theory of change','logic model','results chain','논리모형'],related:['outcome','impact','assumption'],ref:['logframe']},
-  C4:{name:'실행 및 운영관리',core:['implementation plan','operational plan','운영 계획'],related:['workplan','sop'],ref:['project management']},
-  C5:{name:'모니터링 & 평가',core:['monitoring and evaluation','m&e system','indicator framework','평가 계획'],related:['baseline','endline','data quality'],ref:['reporting']},
-  C6:{name:'성과(산출/성과)',core:['outputs achieved','output','deliverable'],related:['beneficiaries reached','coverage','training','workshop'],ref:['result']},
-  C7:{name:'영향(impact)',core:['impact evaluation','long-term impact','제도적 변화'],related:['behaviour change','policy change'],ref:['impact']},
-  C8:{name:'지속가능성',core:['sustainability plan','exit strategy','지속가능성'],related:['scaling','handover'],ref:['continuity']},
-  C9:{name:'비용효율성',core:['cost-effectiveness','value for money','비용 효과성'],related:['unit cost','budget'],ref:['financial']},
-  C10:{name:'리스크 & 적응성',core:['risk analysis','risk mitigation','contingency','리스크'],related:['adaptive management'],ref:['constraint']},
-  C11:{name:'젠더/포용',core:['gender analysis','psea','젠더'],related:['inclusion','disability'],ref:['leave no one behind']},
-  C12:{name:'거버넌스/책임성',core:['accountability','complaints mechanism','grievance'],related:['transparency'],ref:['governance']},
-  C13:{name:'환경/기후',core:['climate risk assessment','environmental impact','기후 위험'],related:['drr','resilience'],ref:['climate']},
-  C14:{name:'교훈/확산',core:['lessons learned','good practices','교훈'],related:['case study','innovation'],ref:['takeaways']},
-  C15:{name:'한계/권고',core:['limitations','recommendations','권고'],related:['bottlenecks','constraints'],ref:['way forward']}
+  C1:{name:'Project Overview & Context',core:['background','project overview','context analysis','needs assessment','맥락','배경'],related:['objective','goal','목표'],ref:['overview']},
+  C2:{name:'Stakeholder Analysis',core:['stakeholder analysis','actor mapping','이해관계자'],related:['partner','community'],ref:['coordination']},
+  C3:{name:'Logic Model & Pathways',core:['theory of change','logic model','results chain','논리모형'],related:['outcome','impact','assumption'],ref:['logframe']},
+  C4:{name:'Implementation & Operations',core:['implementation plan','operational plan','운영 계획'],related:['workplan','sop'],ref:['project management']},
+  C5:{name:'Monitoring & Evaluation',core:['monitoring and evaluation','m&e system','indicator framework','평가 계획'],related:['baseline','endline','data quality'],ref:['reporting']},
+  C6:{name:'Outputs / Outcomes',core:['outputs achieved','outcome'],related:['beneficiaries reached','coverage'],ref:['result']},
+  C7:{name:'Impact',core:['impact evaluation','long-term impact','제도적 변화'],related:['behaviour change','policy change'],ref:['impact']},
+  C8:{name:'Sustainability',core:['sustainability plan','exit strategy','지속가능성'],related:['scaling','handover'],ref:['continuity']},
+  C9:{name:'Cost-effectiveness',core:['cost-effectiveness','value for money','비용 효과성'],related:['unit cost','budget'],ref:['financial']},
+  C10:{name:'Risk & Adaptation',core:['risk analysis','risk mitigation','contingency','리스크'],related:['adaptive management'],ref:['constraint']},
+  C11:{name:'Gender & Inclusion',core:['gender analysis','psea','젠더'],related:['inclusion','disability'],ref:['leave no one behind']},
+  C12:{name:'Governance & Accountability',core:['accountability','complaints mechanism','grievance'],related:['transparency'],ref:['governance']},
+  C13:{name:'Environment / Climate',core:['climate risk assessment','environmental impact','기후 위험'],related:['drr','resilience'],ref:['climate']},
+  C14:{name:'Learning & Scale',core:['lessons learned','good practices','교훈'],related:['case study','innovation'],ref:['takeaways']},
+  C15:{name:'Limitations / Recommendations',core:['limitations','recommendations','권고'],related:['bottlenecks','constraints'],ref:['way forward']}
 };
+
 function classifyC15(text, topN){
   topN = topN || 3;
   if(!text) return [];
@@ -867,138 +564,124 @@ function renderC15Badges(arr){
 }
 
 /* =============================
-   Partner filter
+   DB
 ============================= */
-const DEFAULT_PARTNERS = ['UNDP','UNICEF','WFP','UNHCR','IOM','WHO','FAO','UNFPA','UN Women','OCHA'];
-function normalizePartnerName(x){ return String(x||'').trim(); }
-function parsePartnersFromSourceField(sourceStr){
-  return String(sourceStr||'').split(',').map(s=>normalizePartnerName(s)).filter(Boolean);
+function getDB(){
+  try{ return JSON.parse(localStorage.getItem(DB_KEY)||'{"notes":[]}'); }
+  catch(e){ return {notes:[]}; }
 }
-function buildPartnerOptions(items){
-  const set = new Set();
-  DEFAULT_PARTNERS.forEach(p=>set.add(p));
-  items.forEach(it=>{
-    if(it.sourceType!=='reliefweb') return;
-    parsePartnersFromSourceField(it.source).forEach(p=>set.add(p));
+function setDB(db){ localStorage.setItem(DB_KEY,JSON.stringify(db)); }
+
+function migrateNotesIfNeeded(){
+  try{
+    const db=getDB();
+    let changed=false;
+    db.notes=(db.notes||[]).map(n=>{
+      if(!n.hdp){
+        const t=[n.title,n.summary,n.body].filter(Boolean).join(' ');
+        const sc=hdpScore(t); n.hdp=sc; n.hdpLabel=sc.label; changed=true;
+      }
+      if(!n.c15||!n.c15.length){
+        const t2=[n.title,n.summary,n.body].join(' ');
+        n.c15=classifyC15(t2,3); changed=true;
+      }
+      if(!n.risk){
+        const t3=[n.title,n.summary,n.body].join(' ');
+        n.risk=analyzeRiskAndConflict(t3); changed=true;
+      }
+      return n;
+    });
+    if(changed) setDB(db);
+  }catch(e){}
+}
+
+function renderNotes(filter){
+  filter=(filter||'').toLowerCase();
+  const box=document.getElementById('notes-list');
+  const db=getDB();
+  if(!db.notes.length){
+    box.innerHTML='<div class="small">No Saved Notes.</div>';
+    return;
+  }
+  let html='';
+  db.notes.forEach(n=>{
+    const hay=[n.title,n.summary,n.country,n.hdpLabel]
+      .concat((n.c15||[]).map(x=>x.code+' '+x.name))
+      .concat(n.risk && n.risk.riskTags ? n.risk.riskTags : [])
+      .join(' ').toLowerCase();
+    if(filter && hay.indexOf(filter)<0) return;
+
+    html+=`
+      <div class="card">
+        <div class="flex" style="justify-content:space-between">
+          <div><strong>${escapeHTML(n.title)}</strong></div>
+          <div class="small mono">${new Date(n.created).toISOString().slice(0,10)}</div>
+        </div>
+        <div class="small" style="margin:6px 0"><em>${escapeHTML(n.country||'')}</em></div>
+        <div style="margin:6px 0">${renderRiskBadge(n.risk)} ${renderConflictBadge(n.risk && n.risk.conflictIndex)}</div>
+        <div style="margin:6px 0">${hbarHTML(n.hdp)}</div>
+        <div class="small" style="margin:6px 0">${renderC15Badges(n.c15)}</div>
+        <div>${escapeHTML(n.summary || '') || '<span class="small">No Summary</span>'}</div>
+        <div class="flex" style="margin-top:10px;gap:8px">
+          ${n.url?`<a href="${escapeAttr(n.url)}" target="_blank" rel="noopener">Source Link</a>`:''}
+          <button data-id="${escapeAttr(n.id)}" class="btn-del small">Delete</button>
+        </div>
+      </div>`;
   });
-  const arr = Array.from(set).filter(Boolean);
-  arr.sort((a,b)=>a.localeCompare(b));
-  return arr;
+  box.innerHTML=html;
+
+  box.querySelectorAll('.btn-del').forEach(b=>{
+    b.onclick=function(){
+      const id=b.dataset.id;
+      const db2=getDB();
+      db2.notes=db2.notes.filter(x=>x.id!==id);
+      setDB(db2);
+      renderNotes(filter);
+    };
+  });
 }
-function renderPartnerDropdown(items){
-  const sel = document.getElementById('filter-partner');
-  const opts = buildPartnerOptions(items);
-  const current = selectedPartner || "";
-  sel.innerHTML = `<option value="">All</option>` + opts.map(p=>`<option value="${escapeAttr(p)}">${escapeHTML(p)}</option>`).join('');
-  sel.value = current;
-}
-function renderCountryDropdown(){
-  const sel = document.getElementById('filter-country');
-  const current = selectedISO3 || "";
-  sel.innerHTML =
-    `<option value="">All</option>` +
-    RECAP_MAP.map(d=>`<option value="${escapeAttr(d.iso3)}">${escapeHTML(d.name)} (${escapeHTML(d.iso3)})</option>`).join('');
-  sel.value = current;
-}
-renderCountryDropdown();
 
 /* =============================
-   Filters apply
+   Country Filter Modal
 ============================= */
-function itemMatchesPartner(it, partner){
-  if(!partner) return true;
-  const s = (it.source||'').toLowerCase();
-  const p = partner.toLowerCase();
-  return s.includes(p);
-}
-function applyFilters(items){
-  let out = (items||[]).slice();
-  if(selectedISO3) out = out.filter(it => String(it.iso3||'') === String(selectedISO3));
-  if(selectedPartner) out = out.filter(it => it.sourceType === 'reliefweb' && itemMatchesPartner(it, selectedPartner));
-  if(listSpecialMode==='high') out = out.filter(it => it.risk && it.risk.riskLevel==='high');
-  else if(listSpecialMode==='c4') out = out.filter(it => (it.conflictIndex||0) >= 4);
-  return out;
-}
-document.getElementById('filter-country').onchange = (e)=>{ selectedISO3 = e.target.value||""; applyFiltersAndRender(); };
-document.getElementById('filter-partner').onchange = (e)=>{ selectedPartner = e.target.value||""; applyFiltersAndRender(); };
-document.getElementById('btn-clear-filters').onclick = ()=>{
-  selectedISO3=""; selectedPartner=""; listSpecialMode="";
-  document.getElementById('filter-country').value="";
-  document.getElementById('filter-partner').value="";
-  applyFiltersAndRender();
-};
-document.getElementById('kpi-high-tile').onclick = ()=>{ listSpecialMode = (listSpecialMode==='high')?'':'high'; applyFiltersAndRender(); };
-document.getElementById('kpi-c4-tile').onclick   = ()=>{ listSpecialMode = (listSpecialMode==='c4')?'':'c4'; applyFiltersAndRender(); };
-
-/* =============================
-   Country set modal
-============================= */
-const countryModal = document.getElementById('country-modal');
-document.getElementById('btn-country').onclick = () => {
-  const grid = document.getElementById('c-grid');
-  grid.innerHTML = RECAP_MAP.map(d=>{
+function openCountryModal(){
+  const grid = document.getElementById('country-grid');
+  let html = '';
+  RECAP_MAP.forEach(d=>{
     const checked = pickedISO3.includes(d.iso3) ? 'checked' : '';
-    return `
-      <label style="display:flex;gap:8px;align-items:center;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:10px;background:rgba(15,22,32,.25)">
+    html += `
+      <label style="display:flex;gap:8px;align-items:center;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:8px 10px;background:rgba(15,22,32,.25)">
         <input type="checkbox" value="${d.iso3}" ${checked}>
         <span>${escapeHTML(d.name)} <span class="badge">${escapeHTML(d.iso3)}</span></span>
       </label>`;
-  }).join('');
-  countryModal.style.display='flex';
-};
-document.getElementById('c-close').onclick = ()=> countryModal.style.display='none';
-document.getElementById('c-clear').onclick = ()=>{
-  pickedISO3 = [];
-  document.getElementById('country-chip').textContent = 'All 20';
-  countryModal.style.display='none';
-};
-document.getElementById('c-apply').onclick = ()=>{
-  const boxes = document.querySelectorAll('#c-grid input:checked');
-  pickedISO3 = Array.from(boxes).map(b=>b.value);
-  document.getElementById('country-chip').textContent = pickedISO3.length ? ('Selected '+pickedISO3.length) : 'All 20';
-  countryModal.style.display='none';
-};
-countryModal.onclick = (e)=>{ if(e.target.id==='country-modal') countryModal.style.display='none'; };
-
-/* =============================
-   Summary modal
-============================= */
-const modal = document.getElementById('modal');
-document.getElementById('m-close').onclick = ()=> modal.style.display='none';
-modal.onclick = (e)=>{ if(e.target.id==='modal') modal.style.display='none'; };
-window.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){
-    modal.style.display='none';
-    countryModal.style.display='none';
-  }
-});
-
-/* =============================
-   Map (Leaflet)
-============================= */
-const map = L.map('map', { zoomControl:true, preferCanvas:true }).setView([15, 20], 2);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  maxZoom: 10,
-  attribution: '&copy; OpenStreetMap'
-}).addTo(map);
-
-let countryLayer = L.layerGroup().addTo(map);
-let acledLayer = L.layerGroup().addTo(map);
-let ucdpLayer  = L.layerGroup().addTo(map);
-
-function setCountryFilter(iso3){
-  selectedISO3 = iso3 || "";
-  document.getElementById('filter-country').value = selectedISO3;
-  // refresh indicators when country changes
-  refreshSelectedIndicators();
-  applyFiltersAndRender();
+  });
+  grid.innerHTML = html;
+  document.getElementById('country-modal').style.display = 'flex';
 }
+function closeCountryModal(){ document.getElementById('country-modal').style.display = 'none'; }
 
-/* 24m window used for aggregates */
-function getWindowedItems24m(items){
+document.getElementById('open-country').onclick = openCountryModal;
+document.getElementById('country-close').onclick = closeCountryModal;
+document.getElementById('country-clear').onclick = function(){
+  pickedISO3 = [];
+  document.getElementById('country-chip').textContent = 'All 20 Countries';
+  closeCountryModal();
+};
+document.getElementById('country-apply').onclick = function(){
+  const boxes = document.querySelectorAll('#country-grid input:checked');
+  pickedISO3 = Array.from(boxes).map(b=>b.value);
+  document.getElementById('country-chip').textContent =
+    pickedISO3.length ? (pickedISO3.length+' Countries Selected') : 'All 20 Countries';
+  closeCountryModal();
+};
+
+/* =============================
+   Dashboard aggregation (ReliefWeb items)
+============================= */
+function getWindowedItems24m(){
   const now = Date.now();
   const since = now - 730*86400000;
-  return (items||[]).filter(it=>{
+  return (currentItems||[]).filter(it=>{
     const t = Date.parse(it.created);
     return isNaN(t) ? true : (t>=since);
   });
@@ -1007,846 +690,677 @@ function getWindowedItems24m(items){
 function aggregateByCountry(items, metric, agg){
   const buckets = {};
   items.forEach(it=>{
-    if(!it.iso3) return;
-    if(it.sourceType!=='reliefweb') return; // aggregates for RW reports
-    const v = (metric==='conflictIndex') ? it.conflictIndex : it.riskScore;
-    if(v==null || !isFinite(v)) return;
-    if(!buckets[it.iso3]) buckets[it.iso3]=[];
-    buckets[it.iso3].push(Number(v));
+    const country = (it.country||'').split(',')[0].trim() || 'Unknown';
+    const v = (metric==='conflictIndex')
+      ? (it.conflictIndex ?? (it.risk && it.risk.conflictIndex))
+      : (it.riskScore ?? (it.risk && it.risk.riskScore));
+    if(!buckets[country]) buckets[country]=[];
+    if(v!=null && isFinite(v)) buckets[country].push(Number(v));
   });
 
-  const iso3s = (pickedISO3.length ? pickedISO3.slice() : RECAP_ISO3.slice());
-  return iso3s.map(iso3=>{
-    const arr=buckets[iso3]||[];
+  const countries = (pickedISO3.length
+    ? RECAP_MAP.filter(x => pickedISO3.includes(x.iso3)).map(x => x.name)
+    : RECAP_NAMES.slice()
+  );
+
+  return countries.map(c=>{
+    const arr=buckets[c]||[];
     let value=null;
     if(arr.length){
-      value = (agg==='max') ? Math.max(...arr) : (arr.reduce((a,b)=>a+b,0)/arr.length);
+      if(agg==='max') value=Math.max(...arr);
+      else value=arr.reduce((a,b)=>a+b,0)/arr.length;
     }
-    return { iso3, value, n: arr.length };
+    return {country:c, value, n:arr.length};
   });
 }
-function colorByValue(v, metric){
-  if(v==null) return '#6b7b90';
-  if(metric==='conflictIndex'){
-    if(v>=4.5) return '#ff5c5c';
-    if(v>=3.0) return '#f2b45a';
-    return '#43c174';
+
+function renderDashboardTiles(){
+  const metric = document.getElementById('dash-metric').value;
+  const agg    = document.getElementById('dash-agg').value;
+  const sort   = document.getElementById('dash-sort').value;
+
+  const items24 = getWindowedItems24m();
+
+  const total = items24.length;
+  const high = items24.filter(it=> (it.risk && it.risk.riskLevel==='high')).length;
+  const c4 = items24.filter(it=> (it.conflictIndex>=4)).length;
+  document.getElementById('kv-n').textContent = total.toString();
+  document.getElementById('kv-high').textContent = high.toString();
+  document.getElementById('kv-c4').textContent = c4.toString();
+
+  const rows = aggregateByCountry(items24, metric, agg);
+  let arr = rows.slice();
+
+  if(sort==='name'){
+    arr.sort((a,b)=>a.country.localeCompare(b.country));
   }else{
-    if(v>=18) return '#ff5c5c';
-    if(v>=8) return '#f2b45a';
-    return '#43c174';
-  }
-}
-function acledStyleFromFatalities(f){
-  const fat = Number(f||0);
-  const radius = clamp(3 + Math.sqrt(Math.max(0,fat))*1.2, 3, 14);
-  let color = '#43c174';
-  if(fat>=10) color = '#ff5c5c';
-  else if(fat>=1) color = '#f2b45a';
-  return {radius, color};
-}
-function ucdpStyleFromDeaths(d){
-  const n = Number(d||0);
-  const radius = clamp(3 + Math.sqrt(Math.max(0,n))*1.1, 3, 14);
-  let color = '#43c174';
-  if(n>=25) color = '#ff5c5c';
-  else if(n>=1) color = '#f2b45a';
-  return {radius, color};
-}
-
-function renderMap(){
-  countryLayer.clearLayers();
-  acledLayer.clearLayers();
-  ucdpLayer.clearLayers();
-  if(!currentItems.length) return;
-
-  const filtered = applyFilters(currentItems);
-
-  const showCountry = document.getElementById('layer-country').checked;
-  const showACLED   = document.getElementById('layer-acled').checked;
-  const showUCDP    = document.getElementById('layer-ucdp').checked;
-
-  if(showCountry){
-    const metric = document.getElementById('map-metric').value;
-    const agg = document.getElementById('map-agg').value;
-    const items24 = getWindowedItems24m(filtered);
-    const rows = aggregateByCountry(items24, metric, agg);
-
-    rows.forEach(r=>{
-      const ll = COUNTRY_CENTROIDS[r.iso3];
-      if(!ll) return;
-
-      const color = colorByValue(r.value, metric);
-      const radius = 10 + clamp(r.n, 0, 40) * 0.45;
-      const name = (RECAP_MAP.find(x=>x.iso3===r.iso3)||{}).name || r.iso3;
-      const vtxt = (r.value==null) ? '—' : (Math.round(r.value*10)/10);
-      const label = metric==='conflictIndex' ? 'Heat' : 'Risk';
-
-      const circle = L.circleMarker(ll,{
-        radius, color, weight:2, fillColor:color, fillOpacity:.35
-      });
-
-      circle.bindPopup(`
-        <div style="font-family:system-ui; font-size:13px;">
-          <div style="font-weight:700;margin-bottom:6px;">${escapeHTML(name)} <span style="opacity:.8">(${escapeHTML(r.iso3)})</span></div>
-          <div>${escapeHTML(label)} (${escapeHTML(agg)}): <b>${escapeHTML(String(vtxt))}</b></div>
-          <div style="margin-top:4px; color:#8aa0bb;">N (24M Reports): ${escapeHTML(String(r.n))}</div>
-          <div style="margin-top:6px;"><span class="small">Click = Filter Country</span></div>
-        </div>
-      `);
-      circle.on('click', ()=> setCountryFilter(r.iso3));
-      circle.addTo(countryLayer);
+    arr.sort((a,b)=>{
+      const av=(a.value==null?-Infinity:a.value);
+      const bv=(b.value==null?-Infinity:b.value);
+      return bv-av;
     });
   }
 
-  if(showACLED){
-    const pts = filtered.filter(it=>it.sourceType==='acled' && it.lat!=null && it.lon!=null).slice(0, 2000);
-    pts.forEach(ev=>{
-      const {radius, color} = acledStyleFromFatalities(ev.fatalities);
-      const m = L.circleMarker([ev.lat, ev.lon],{
-        radius, color, weight:1.5, fillColor: color, fillOpacity: .55
-      });
+  const vals = arr.map(x=>x.value).filter(v=>v!=null && isFinite(v));
+  const vmax = vals.length ? Math.max(...vals) : 0;
 
-      const when = String(ev.created||'').slice(0,10);
-      const name = (RECAP_MAP.find(x=>x.iso3===ev.iso3)||{}).name || ev.iso3 || '';
-      const title = ev.title || 'ACLED Event';
-      const loc = [ev.location, ev.admin1].filter(Boolean).join(', ');
-      const et = [ev.event_type, ev.sub_event_type].filter(Boolean).join(' / ');
-      const fat = (ev.fatalities!=null) ? String(ev.fatalities) : '0';
+  const grid = document.getElementById('dash-grid');
+  if(!grid) return;
 
-      m.bindPopup(`
-        <div style="font-family:system-ui; font-size:13px; line-height:1.35">
-          <div style="font-weight:700;margin-bottom:6px;">${escapeHTML(title)}</div>
-          <div style="color:#8aa0bb">${escapeHTML(when)} · ${escapeHTML(name)} (${escapeHTML(ev.iso3||'')})</div>
-          <div style="margin-top:6px">${escapeHTML(et)}</div>
-          <div style="margin-top:4px">${escapeHTML(loc)} · Fatalities: <b>${escapeHTML(fat)}</b></div>
-          <div style="margin-top:6px;"><span class="small">Click = Filter Country</span></div>
-        </div>
-      `);
-
-      m.on('click', ()=>{ if(ev.iso3) setCountryFilter(ev.iso3); });
-      m.addTo(acledLayer);
-    });
-  }
-
-  if(showUCDP){
-    const pts = filtered.filter(it=>it.sourceType==='ucdp' && it.lat!=null && it.lon!=null).slice(0, 2000);
-    pts.forEach(ev=>{
-      const {radius, color} = ucdpStyleFromDeaths(ev.deaths);
-      const m = L.circleMarker([ev.lat, ev.lon],{
-        radius, color, weight:1.2, fillColor: color, fillOpacity: .50
-      });
-      const when = String(ev.created||'').slice(0,10);
-      const nm = (RECAP_MAP.find(x=>x.iso3===ev.iso3)||{}).name || ev.iso3 || '';
-      m.bindPopup(`
-        <div style="font-family:system-ui; font-size:13px; line-height:1.35">
-          <div style="font-weight:700;margin-bottom:6px;">${escapeHTML(ev.title||'UCDP Event')}</div>
-          <div style="color:#8aa0bb">${escapeHTML(when)} · ${escapeHTML(nm)} (${escapeHTML(ev.iso3||'')})</div>
-          <div style="margin-top:6px">${escapeHTML(ev.type||'')}</div>
-          <div style="margin-top:4px">Deaths: <b>${escapeHTML(String(ev.deaths||0))}</b></div>
-          <div style="margin-top:6px;"><span class="small">Click = Filter Country</span></div>
-        </div>
-      `);
-      m.on('click', ()=>{ if(ev.iso3) setCountryFilter(ev.iso3); });
-      m.addTo(ucdpLayer);
-    });
-  }
-}
-document.getElementById('map-refresh').onclick = renderMap;
-document.getElementById('map-metric').onchange = renderMap;
-document.getElementById('map-agg').onchange = renderMap;
-document.getElementById('layer-country').onchange = renderMap;
-document.getElementById('layer-acled').onchange = renderMap;
-document.getElementById('layer-ucdp').onchange = renderMap;
-
-/* =============================
-   Items rendering
-============================= */
-function openSummary(it){
-  const meta = [it.country, it.iso3?('('+it.iso3+')'):'', it.source, it.theme, it.type, it.sourceType].filter(Boolean).join(' · ');
-  const sum = summarizeText(it.body, 6) || summarizeText([it.title, meta].join(' '), 3) || '(No Summary)';
-
-  document.getElementById('m-title').textContent = it.title;
-  document.getElementById('m-meta').textContent = meta;
-  document.getElementById('m-badges').innerHTML =
-    `${renderRiskBadge(it.risk)} ${renderConflictBadge(it.conflictIndex)} `+
-    `<span style="margin-left:10px">${hbarHTML(it.hdp)}</span> `+
-    `<span style="margin-left:10px">${renderC15Badges(it.c15)}</span>`;
-  document.getElementById('m-sum').textContent = sum;
-  document.getElementById('m-link').href = it.url || '#';
-  modal.style.display='flex';
-}
-function renderTable(items){
-  const box = document.getElementById('results');
-  if(!items.length){
-    box.innerHTML = '<div class="small">No Items.</div>';
+  if(!currentItems.length){
+    grid.innerHTML = `<div class="small" style="grid-column:1/-1;color:#9fb2c8">
+      No Data. Click <b>Fetch</b>.
+    </div>`;
     return;
   }
 
-  const rows = items.map((it,i)=>`
-    <tr>
-      <td>${escapeHTML(String(it.created||'').slice(0,10))}</td>
-      <td class="title-cell" data-i="${i}">${escapeHTML(it.title)}</td>
-      <td>${escapeHTML(it.country||'')}</td>
-      <td>${escapeHTML(it.source||'')}</td>
-      <td>${renderRiskBadge(it.risk)}</td>
-      <td>${renderConflictBadge(it.conflictIndex)}</td>
-      <td>${hbarHTML(it.hdp)}</td>
-      <td>${renderC15Badges(it.c15)}</td>
-      <td>${it.url?`<a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">Link</a>`:''}</td>
-    </tr>
-  `).join('');
+  grid.innerHTML = arr.map(x=>{
+    const v = x.value;
+    const pct = (v==null || vmax<=0) ? 0 : Math.max(0, Math.min(100, (v/vmax)*100));
+    const vtxt = (v==null) ? '—' : (Math.round(v*10)/10).toString();
+    const unit = (metric==='conflictIndex') ? 'Heat' : 'Risk';
+    const sub = `24m ${agg} · ${unit} · n=${x.n}`;
+    return `
+      <div class="dash-tile" data-country="${escapeAttr(x.country)}">
+        <div class="dash-name">${escapeHTML(x.country)}</div>
+        <div class="dash-sub">${escapeHTML(sub)}</div>
+        <div class="dash-val">${escapeHTML(vtxt)}</div>
+        <div class="mini-bar"><div style="width:${pct}%"></div></div>
+      </div>
+    `;
+  }).join('');
 
-  box.innerHTML = `
-    <div style="max-height:58vh; overflow:auto; border:1px solid var(--line); border-radius:16px">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:96px">Date</th>
-            <th>Title</th>
-            <th style="width:180px">Country</th>
-            <th style="width:170px">Source</th>
-            <th style="width:90px">Risk</th>
-            <th style="width:110px">Conflict</th>
-            <th style="width:90px">HDP</th>
-            <th style="width:120px">C-Codes</th>
-            <th style="width:70px">Url</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
+  grid.querySelectorAll('.dash-tile').forEach(el=>{
+    el.onclick = ()=> openCountryDetail(el.dataset.country);
+  });
+}
+
+/* =============================
+   Country detail + external signals display
+============================= */
+function openCountryDetail(countryName){
+  const items = (currentItems||[])
+    .filter(it => ((it.country||'').split(',')[0].trim()||'Unknown') === countryName)
+    .sort((a,b)=> (Date.parse(b.created)||0) - (Date.parse(a.created)||0));
+
+  const items24 = items.filter(it=>{
+    const t = Date.parse(it.created);
+    if(isNaN(t)) return true;
+    return t >= (Date.now() - 730*86400000);
+  });
+
+  const n = items24.length;
+  const high = items24.filter(it=>it.risk && it.risk.riskLevel==='high').length;
+  const med  = items24.filter(it=>it.risk && it.risk.riskLevel==='med').length;
+  const c4   = items24.filter(it=>it.conflictIndex>=4).length;
+
+  const avgRisk = (() => {
+    const xs = items24.map(it=>it.riskScore).filter(v=>v!=null && isFinite(v));
+    return xs.length ? (xs.reduce((a,b)=>a+b,0)/xs.length) : null;
+  })();
+
+  const avgHeat = (() => {
+    const xs = items24.map(it=>it.conflictIndex).filter(v=>v!=null && isFinite(v));
+    return xs.length ? (xs.reduce((a,b)=>a+b,0)/xs.length) : null;
+  })();
+
+  document.getElementById('cd-title').textContent = countryName;
+  document.getElementById('cd-sub').textContent = `Last 24 Months (Docs: ${n})`;
+
+  document.getElementById('cd-kv').innerHTML = `
+    <div><div class="k">Mean Risk</div><div class="v">${avgRisk==null?'—':(Math.round(avgRisk*10)/10)}</div></div>
+    <div><div class="k">Mean Heat</div><div class="v">${avgHeat==null?'—':(Math.round(avgHeat*10)/10)}</div></div>
+    <div><div class="k">High/Med/Heat≥4</div><div class="v">${high}/${med}/${c4}</div></div>
   `;
 
-  box.querySelectorAll('.title-cell').forEach(td=>{
-    td.onclick = ()=>{
-      const idx = Number(td.dataset.i);
-      const it = items[idx];
-      if(it) openSummary(it);
-    };
-  });
-}
+  const top = items.slice(0,20);
+  if(!top.length){
+    document.getElementById('cd-list').innerHTML = `<div class="small">No Items.</div>`;
+  }else{
+    document.getElementById('cd-list').innerHTML = top.map(it=>{
+      const meta = [
+        (it.created ? String(it.created).slice(0,10) : ''),
+        it.source || '',
+        it.theme || '',
+        it.type || ''
+      ].filter(Boolean).join(' · ');
 
-/* =============================
-   Dashboard
-============================= */
-function pctBar(el, numerator, denom){
-  const p = denom>0 ? (numerator/denom)*100 : 0;
-  el.style.width = clamp(p, 0, 100).toFixed(1) + '%';
-}
-function formatTopList(arr){
-  if(!arr.length) return '—';
-  return arr.map(x=>x.label).join(' · ');
-}
-function updateDashboard(filtered){
-  const total = filtered.length;
-  const reports = filtered.filter(x=>x.sourceType==='reliefweb').length;
-  const events = filtered.filter(x=>x.sourceType==='acled' || x.sourceType==='ucdp').length;
+      return `
+        <div class="card">
+          <div class="flex" style="justify-content:space-between;gap:10px">
+            <div style="font-weight:700">${escapeHTML(it.title)}</div>
+            <div class="small mono">${escapeHTML(String(it.created||'').slice(0,10))}</div>
+          </div>
+          <div class="small" style="margin-top:4px">${escapeHTML(meta)}</div>
+          <div style="margin-top:8px">
+            ${renderRiskBadge(it.risk)} ${renderConflictBadge(it.conflictIndex)} ${hbarHTML(it.hdp)}
+            <span class="small" style="margin-left:8px">${renderC15Badges(it.c15)}</span>
+          </div>
+          <div class="flex" style="margin-top:10px;gap:10px">
+            <a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">Source</a>
+            <button class="small btn-open-summary" data-id="${escapeAttr(it.id)}">Summary</button>
+          </div>
+        </div>
+      `;
+    }).join('');
 
-  const high = filtered.filter(x=>x.risk && x.risk.riskLevel==='high').length;
-  const c4 = filtered.filter(x=>(x.conflictIndex||0)>=4).length;
-
-  const h = filtered.filter(x=>x.hdp && x.hdp.H==='yes').length;
-  const d = filtered.filter(x=>x.hdp && x.hdp.D==='yes').length;
-  const p = filtered.filter(x=>x.hdp && x.hdp.P==='yes').length;
-
-  const codeCount = {};
-  filtered.forEach(it=>{
-    (it.c15||[]).forEach(c=>{
-      codeCount[c.code] = (codeCount[c.code]||0) + 1;
-    });
-  });
-  const topCodes = Object.entries(codeCount)
-    .sort((a,b)=>b[1]-a[1])
-    .slice(0,3)
-    .map(([code,n])=>({label:`${code}(${n})`, code, n}));
-
-  document.getElementById('kpi-items').textContent = String(total);
-  document.getElementById('kpi-reports').textContent = String(reports);
-  document.getElementById('kpi-events').textContent = String(events);
-
-  document.getElementById('kpi-high').textContent = String(high);
-  pctBar(document.getElementById('kpi-high-bar'), high, total);
-
-  document.getElementById('kpi-c4').textContent = String(c4);
-  pctBar(document.getElementById('kpi-c4-bar'), c4, total);
-
-  document.getElementById('kpi-hdp').textContent =
-    (total? `${Math.round((h/total)*100)}% H · ${Math.round((d/total)*100)}% D · ${Math.round((p/total)*100)}% P` : '—');
-
-  document.getElementById('kpi-codes').textContent = formatTopList(topCodes);
-  document.getElementById('kpi-codes-s').textContent = topCodes.length ? topCodes.map(x=>{
-    const nm = (CODES[x.code]||{}).name || '';
-    return `${x.code}: ${nm}`;
-  }).join(' · ') : 'Top 3';
-
-  const scopeParts = [];
-  if(selectedISO3) scopeParts.push('Country='+selectedISO3);
-  if(selectedPartner) scopeParts.push('Partner='+selectedPartner);
-  if(listSpecialMode) scopeParts.push('Mode='+listSpecialMode);
-  document.getElementById('dash-scope').textContent = 'Scope: ' + (scopeParts.length ? scopeParts.join(', ') : 'All');
-  document.getElementById('dash-window').textContent =
-    'Window: ' + String(document.getElementById('years').value||'') + ' Years';
-}
-
-/* =============================
-   Indicators: WB / SDG / FTS / DTM (Selected Country)
-============================= */
-async function fetchWorldBankValue(iso3, indicator, year){
-  // Uses WB country code (2-letter) normally; many ISO3 work but not guaranteed.
-  // We map some ISO3 to WB 2-letter when possible; fallback uses ISO3.
-  const ISO3_TO_WB = {
-    BDI:'BI', CAF:'CF', COM:'KM', GIN:'GN', KEN:'KE', MLI:'ML',
-    STP:'ST', SOM:'SO', SSD:'SS', ZWE:'ZW', ARM:'AM', IRN:'IR',
-    JOR:'JO', LBN:'LB', PSE:'PS', SYR:'SY', YEM:'YE', PNG:'PG',
-    SLB:'SB', TLS:'TL'
-  };
-  const wbC = ISO3_TO_WB[iso3] || iso3;
-  const url = `https://api.worldbank.org/v2/country/${encodeURIComponent(wbC)}/indicator/${encodeURIComponent(indicator)}?format=json&per_page=60`;
-  const res = await fetch(url);
-  if(!res.ok) throw new Error('World Bank HTTP '+res.status);
-  const json = await res.json();
-  const rows = Array.isArray(json) ? json[1] : null;
-  if(!Array.isArray(rows)) return null;
-
-  // pick requested year first, else most recent non-null
-  let hit = rows.find(r=>String(r.date)===String(year) && r.value!=null);
-  if(!hit) hit = rows.find(r=>r.value!=null);
-  if(!hit) return null;
-
-  return { year: hit.date, value: hit.value, unit: (hit.indicator && hit.indicator.value) ? hit.indicator.value : '' };
-}
-
-async function fetchUNSDGValue(iso3, indicatorOrSeries){
-  // UN SDG API is broad; this is a minimal "try" fetch.
-  // If indicatorOrSeries is empty -> return null.
-  if(!indicatorOrSeries) return null;
-
-  // Attempt using Indicator/Data endpoint with areaCode filter if possible.
-  // We do not assume code system; user can put a valid Indicator code; we fetch and pick first matching.
-  const url = new URL('https://unstats.un.org/SDGAPI/v1/sdg/Indicator/Data');
-  // Many SDG API filters use "areaCode" numeric; we don't have that mapping here.
-  // So we fetch by indicator only and then filter by geoAreaName matching our country name.
-  url.searchParams.set('indicator', indicatorOrSeries);
-
-  const res = await fetch(url.toString());
-  if(!res.ok) throw new Error('UN SDG HTTP '+res.status);
-  const json = await res.json();
-  const data = json && (json.data || json) ? (json.data || json) : null;
-  if(!Array.isArray(data)) return null;
-
-  const cname = (RECAP_MAP.find(x=>x.iso3===iso3)||{}).name || '';
-  const rows = data.filter(r=>{
-    const g = (r.geoAreaName || r.GeoAreaName || r.geoArea || '').toString();
-    return cname && g.toLowerCase() === cname.toLowerCase();
-  });
-
-  const pick = (rows.length ? rows : data).find(r=>{
-    const v = r.value ?? r.Value ?? r.val;
-    return v!=null && v!=='' && isFinite(Number(v));
-  });
-  if(!pick) return null;
-
-  const val = Number(pick.value ?? pick.Value ?? pick.val);
-  const y = pick.timePeriodStart ?? pick.timePeriod ?? pick.year ?? pick.TimePeriod ?? '';
-  const series = pick.series ?? pick.seriesCode ?? pick.SeriesCode ?? indicatorOrSeries;
-
-  return { year: y, value: val, series: series };
-}
-
-async function fetchFTSValue(year){
-  const url = `https://api.fts.unocha.org/api/v1/appeal/year/${encodeURIComponent(year)}`;
-  const res = await fetch(url);
-  if(!res.ok) throw new Error('FTS HTTP '+res.status);
-  const json = await res.json();
-  // Minimal: show number of appeals + total requirements if present
-  const data = json && (json.data || json) ? (json.data || json) : null;
-  if(!data) return null;
-
-  const appeals = Array.isArray(data) ? data : (data.appeals || data.data || []);
-  const n = Array.isArray(appeals) ? appeals.length : null;
-
-  // try to sum "requirements" or "funding" if present
-  let reqSum = 0, hasReq=false;
-  if(Array.isArray(appeals)){
-    appeals.forEach(a=>{
-      const r = Number(a.requirements ?? a.total_requirements ?? a.requirementsUsd ?? NaN);
-      if(isFinite(r)){ reqSum += r; hasReq=true; }
+    document.querySelectorAll('.btn-open-summary').forEach(btn=>{
+      btn.onclick=()=>{
+        const id = btn.dataset.id;
+        const it = (currentItems||[]).find(x=>String(x.id)===String(id));
+        if(it) openSummaryModal(it);
+      };
     });
   }
-  return { year, appeals: n, requirements: hasReq ? reqSum : null };
+
+  // external signals
+  const iso3 = (RECAP_MAP.find(x=>x.name===countryName)||{}).iso3;
+  const sig = (extSignals[iso3] || {});
+  const lines = [];
+  if(sig.ucdp){
+    if(sig.ucdp.ok) lines.push(`Ucdp: Ok (Events: ${sig.ucdp.n || 0})`);
+    else lines.push(`Ucdp: ${sig.ucdp.msg || '—'}`);
+  }
+  if(sig.fts){
+    if(sig.fts.ok) lines.push(`Fts: Ok (Records: ${sig.fts.n || 0})`);
+    else lines.push(`Fts: ${sig.fts.msg || '—'}`);
+  }
+  if(sig.wb){
+    if(sig.wb.ok) lines.push(`World Bank: Ok (${sig.wb.label || 'Data'})`);
+    else lines.push(`World Bank: ${sig.wb.msg || '—'}`);
+  }
+  if(sig.unsdg){
+    if(sig.unsdg.ok) lines.push(`Un Sdg: Ok (Sample: ${sig.unsdg.n || 0})`);
+    else lines.push(`Un Sdg: ${sig.unsdg.msg || '—'}`);
+  }
+  if(sig.dtm){
+    if(sig.dtm.ok) lines.push(`Iom Dtm: Ok (Sample: ${sig.dtm.n || 0})`);
+    else lines.push(`Iom Dtm: ${sig.dtm.msg || '—'}`);
+  }
+  document.getElementById('cd-ext').textContent = lines.length ? lines.join(' | ') : '—';
+
+  document.getElementById('country-detail-modal').style.display='flex';
+}
+document.getElementById('cd-close').onclick=()=>{ document.getElementById('country-detail-modal').style.display='none'; };
+
+/* =============================
+   Summary modal
+============================= */
+function openSummaryModal(it){
+  const meta = [it.country,it.source,it.theme,it.type].filter(Boolean).join(' · ');
+  const sumTxt =
+    summarizeText(it.body,5) ||
+    summarizeText(it.title+' '+meta,3) ||
+    'No Summary Available.';
+
+  const riskLine = renderRiskBadge(it.risk) + ' ' + renderConflictBadge(it.conflictIndex);
+
+  document.getElementById('summary-title').textContent=it.title;
+  document.getElementById('summary-meta').textContent=meta;
+  document.getElementById('summary-hdp').innerHTML=
+    riskLine + '<div style="margin-top:6px">'+hbarHTML(it.hdp)+'</div>' +
+    (it.c15 && it.c15.length ? `<div class="small" style="margin-top:6px">${renderC15Badges(it.c15)}</div>` : '');
+
+  document.getElementById('summary-content').innerHTML=
+    `<p>${escapeHTML(sumTxt)}</p>
+     <hr/>
+     <p><a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">Open Source</a></p>
+     <p class="small" style="color:#9fb2c8">
+       ${(it.risk && it.risk.riskTags && it.risk.riskTags.length) ? 'Risk Tags: '+escapeHTML(it.risk.riskTags.join(', ')) : ''}
+     </p>`;
+
+  document.getElementById('summary-modal').style.display='flex';
+}
+document.getElementById('summary-close').onclick=function(){
+  document.getElementById('summary-modal').style.display='none';
+};
+document.getElementById('summary-modal').onclick=function(e){
+  if(e.target.id==='summary-modal') e.currentTarget.style.display='none';
+};
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    document.getElementById('summary-modal').style.display='none';
+    document.getElementById('country-modal').style.display='none';
+    document.getElementById('country-detail-modal').style.display='none';
+  }
+});
+
+/* =============================
+   External fetch helpers
+============================= */
+async function fetchJsonSmart(url, needsProxy){
+  // needsProxy true → try proxy first; if no proxy, throw with clear message
+  const px = proxify(url);
+  if(needsProxy){
+    if(!px) throw new Error('Needs Proxy (Cors)');
+    const r = await fetch(px);
+    if(!r.ok) throw new Error('Http '+r.status);
+    return await r.json();
+  }else{
+    // try direct; if fails CORS in browser, caller sees error and status becomes Needs Proxy
+    const r = await fetch(url);
+    if(!r.ok) throw new Error('Http '+r.status);
+    return await r.json();
+  }
 }
 
-async function fetchDTMValue(url){
-  if(!url) return null;
-  const res = await fetch(url);
-  if(!res.ok) throw new Error('DTM HTTP '+res.status);
-  const json = await res.json();
-  // Minimal: show JSON size or a top-level count if exists
-  const str = JSON.stringify(json);
-  const kb = Math.round(str.length/1024);
-  let hint = null;
-  if(json && typeof json==='object'){
-    if(Array.isArray(json.data)) hint = 'data[] = '+json.data.length;
-    else if(Array.isArray(json.results)) hint = 'results[] = '+json.results.length;
-    else hint = 'object';
-  }
-  return { kb, hint };
+function getSelectedIso3(){
+  return pickedISO3.length ? pickedISO3 : RECAP_ISO3.slice();
 }
-
-async function refreshSelectedIndicators(){
-  const iso3 = selectedISO3;
-  const year = Number(document.getElementById('ind-year').value||2024);
-  const wbInd = (document.getElementById('wb-ind').value||'').trim();
-  const sdgInd = (document.getElementById('sdg-ind').value||'').trim();
-  const ftsYear = Number(document.getElementById('fts-year').value||2024);
-  const cfg = loadCfg();
-  const dtmUrl = (document.getElementById('dtm-url').value||cfg.dtmUrl||'').trim();
-
-  // reset labels
-  document.getElementById('ind-wb-s').textContent = 'Indicator: ' + (wbInd || '—');
-  document.getElementById('ind-sdg-s').textContent = 'Indicator: ' + (sdgInd || '—');
-  document.getElementById('ind-fts-s').textContent = 'Year: ' + String(ftsYear);
-  document.getElementById('ind-dtm-s').textContent = 'Endpoint: ' + (dtmUrl ? 'Set' : '—');
-
-  // If no country selected, show dashes
-  if(!iso3){
-    document.getElementById('ind-wb').textContent = '—';
-    document.getElementById('ind-sdg').textContent = '—';
-    document.getElementById('ind-fts').textContent = '—';
-    document.getElementById('ind-dtm').textContent = '—';
-    return;
-  }
-
-  // WB
-  if(document.getElementById('use-worldbank').checked){
-    try{
-      const r = await fetchWorldBankValue(iso3, wbInd, year);
-      document.getElementById('ind-wb').textContent = r ? (Number(r.value).toLocaleString() + ' ('+r.year+')') : 'No Data';
-    }catch(e){
-      document.getElementById('ind-wb').textContent = 'Error';
-    }
-  }else{
-    document.getElementById('ind-wb').textContent = '—';
-  }
-
-  // SDG
-  if(document.getElementById('use-unsdg').checked){
-    try{
-      const r = await fetchUNSDGValue(iso3, sdgInd);
-      document.getElementById('ind-sdg').textContent = r ? (Number(r.value).toLocaleString() + (r.year?(' ('+r.year+')'):'') ) : 'No Data';
-    }catch(e){
-      document.getElementById('ind-sdg').textContent = 'Error';
-    }
-  }else{
-    document.getElementById('ind-sdg').textContent = '—';
-  }
-
-  // FTS (not strictly country specific with this endpoint, but provides context)
-  if(document.getElementById('use-fts').checked){
-    try{
-      const r = await fetchFTSValue(ftsYear);
-      if(!r){ document.getElementById('ind-fts').textContent = 'No Data'; }
-      else{
-        const req = (r.requirements!=null) ? (' · Req $'+Math.round(r.requirements).toLocaleString()) : '';
-        document.getElementById('ind-fts').textContent = `Appeals ${r.appeals ?? '—'}${req}`;
-      }
-    }catch(e){
-      document.getElementById('ind-fts').textContent = 'Error';
-    }
-  }else{
-    document.getElementById('ind-fts').textContent = '—';
-  }
-
-  // DTM (endpoint depends on user config)
-  if(document.getElementById('use-dtm').checked){
-    if(!dtmUrl){ document.getElementById('ind-dtm').textContent = 'No Endpoint'; }
-    else{
-      try{
-        const r = await fetchDTMValue(dtmUrl);
-        document.getElementById('ind-dtm').textContent = r ? (`${r.hint || 'ok'} · ~${r.kb} KB`) : 'No Data';
-      }catch(e){
-        document.getElementById('ind-dtm').textContent = 'Error';
-      }
-    }
-  }else{
-    document.getElementById('ind-dtm').textContent = '—';
-  }
+function ensureSig(iso3){
+  if(!extSignals[iso3]) extSignals[iso3] = {};
+  return extSignals[iso3];
 }
 
 /* =============================
-   Fetch: ReliefWeb / ACLED / UCDP
+   ReliefWeb fetch (core)
 ============================= */
-async function fetchReliefWeb(daySpan, limit){
-  const url = 'https://api.reliefweb.int/v1/reports?appname=' + encodeURIComponent(APPNAME);
-  const body = {
-    limit: Math.min(limit, 1000),
-    offset: 0,
-    filter:{ operator:'AND', conditions:[ {field:'country.iso3', value: iso3ForQuery()} ] },
-    fields:{ include:[
-      'id','title','url','body','body-html',
-      'country','country.iso3',
-      'source','theme','disaster_type','date.created'
-    ]},
+async function rwFetch(){
+  const out = document.getElementById('rw-results');
+  const st  = document.getElementById('rw-status');
+  out.innerHTML='';
+  st.textContent='Fetching…';
+  document.getElementById('risk-narrative-box').style.display = 'none';
+
+  setStatus('st-reliefweb','warn','Loading');
+
+  const years = Math.max(1, Number(document.getElementById('rw-years').value || 10));
+  const daySpan = years * 365;
+  const limit = 1000; // ReliefWeb hard cap in this UI
+  const sinceDate = new Date(Date.now()-daySpan*86400000);
+  const sinceMillis = sinceDate.getTime();
+
+  const iso3ForQuery = getSelectedIso3();
+  const url='https://api.reliefweb.int/v1/reports?appname='+encodeURIComponent(APPNAME);
+
+  const body={
+    limit:limit,
+    offset:0,
+    filter:{ operator:'AND', conditions:[ {field:'country.iso3',value:iso3ForQuery} ] },
+    fields:{ include:['id','title','url','body','body-html','country','source','theme','disaster_type','date.created'] },
     sort:['date.created:desc']
   };
 
-  const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  if(!res.ok){
-    const t = await res.text().catch(()=> '');
-    throw new Error('ReliefWeb HTTP '+res.status+' :: '+t.slice(0,220));
-  }
-  const json = await res.json();
-  const data = json.data || [];
-  const sinceMillis = Date.now() - daySpan*86400000;
-
-  const items = data.map(r=>{
-    const f=r.fields||{};
-    const rawHtml=(f['body-html']||'').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ');
-    const bodyText=(f.body && String(f.body).trim().length>0) ? f.body : rawHtml;
-
-    const countryArr = (f.country||[]);
-    const iso3 = inferIso3(countryArr);
-
-    const metaTxt = [
-      f.title||'',
-      (f.theme||[]).map(t=>t.name).join(', '),
-      (f.disaster_type||[]).map(d=>d.name).join(', '),
-      (f.source||[]).map(s=>s.name).join(', '),
-      countryArr.map(c=>c.name).join(', ')
-    ].join(' | ');
-
-    const baseText = metaTxt + ' ' + bodyText;
-    const hdp = hdpScore(baseText);
-    const c15 = classifyC15(baseText,3);
-    const risk = analyzeRiskAndConflict(baseText);
-
-    return {
-      id: 'rw-'+r.id,
-      sourceType: 'reliefweb',
-      title: f.title||'(Untitled)',
-      url: f.url||'',
-      created: f['date.created']||'',
-      country: countryArr.map(c=>c.name).join(', '),
-      iso3: iso3,
-      source: (f.source||[]).map(s=>s.name).join(', '),
-      theme: (f.theme||[]).map(t=>t.name).join(', '),
-      type: (f.disaster_type||[]).map(d=>d.name).join(', '),
-      body: bodyText,
-      hdp, c15,
-      risk,
-      riskScore: risk.riskScore,
-      conflictIndex: risk.conflictIndex
-    };
-  }).filter(it=>{
-    const t = Date.parse(it.created);
-    return isNaN(t) ? true : (t>=sinceMillis);
-  });
-
-  return items;
-}
-
-async function fetchACLED(daySpan, totalLimit){
-  const cfg = loadCfg();
-  const key = (document.getElementById('acled-key').value||cfg.acledKey||'').trim();
-  const email = (document.getElementById('acled-email').value||cfg.acledEmail||'').trim();
-  if(!key || !email) return [];
-
-  const iso3s = iso3ForQuery();
-  const since = new Date(Date.now() - daySpan*86400000);
-  const sinceStr = since.toISOString().slice(0,10);
-
-  const hardMax = Math.min(Math.max(200, totalLimit), 2000);
-  const out = [];
-
-  for(const iso3 of iso3s){
-    if(out.length >= hardMax) break;
-
-    const per = Math.min(500, hardMax - out.length);
-    const url = new URL('https://api.acleddata.com/acled/read');
-    url.searchParams.set('key', key);
-    url.searchParams.set('email', email);
-    url.searchParams.set('iso', iso3);
-    url.searchParams.set('event_date', sinceStr + '|');
-    url.searchParams.set('limit', String(per));
-    url.searchParams.set('sort', 'event_date:desc');
-
-    const res = await fetch(url.toString());
+  try{
+    const res=await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
     if(!res.ok){
+      setStatus('st-reliefweb','bad','Error');
+      st.textContent='ReliefWeb Error ('+res.status+')';
       const t = await res.text().catch(()=> '');
-      throw new Error('ACLED HTTP '+res.status+' ('+iso3+') :: '+t.slice(0,220));
+      out.innerHTML = `<div class="small err">Http ${res.status}<br/>${escapeHTML(t).slice(0,800)}</div>`;
+      return;
     }
-    const json = await res.json();
-    const events = (json.data || []);
 
-    events.forEach(e=>{
-      if(out.length >= hardMax) return;
+    const json=await res.json();
+    const data=json.data || [];
 
-      const lat = safeNum(e.latitude);
-      const lon = safeNum(e.longitude);
-      if(lat==null || lon==null) return;
+    currentItems=data.map(r=>{
+      const f=r.fields||{};
+      const rawHtml=(f['body-html']||'')
+        .replace(/<style[\s\S]*?<\/style>/gi,' ')
+        .replace(/<[^>]+>/g,' ');
+      const bodyText=(f.body && String(f.body).trim().length>0) ? f.body : rawHtml;
 
-      const name = (RECAP_MAP.find(x=>x.iso3===iso3)||{}).name || iso3;
-      const title = `${e.event_type || 'Event'}${e.sub_event_type ? ' · '+e.sub_event_type : ''}`;
-      const when = e.event_date || '';
-      const loc = [e.location, e.admin1].filter(Boolean).join(', ');
-      const fat = safeNum(e.fatalities) ?? 0;
-
-      const baseText = [
-        'ACLED', name, iso3,
-        e.event_type||'', e.sub_event_type||'',
-        e.actor1||'', e.actor2||'',
-        e.notes||'',
-        'fatalities '+fat
+      const metaTxt=[
+        f.title||'',
+        (f.theme||[]).map(t=>t.name).join(', '),
+        (f.disaster_type||[]).map(d=>d.name).join(', '),
+        (f.source||[]).map(s=>s.name).join(', '),
+        (f.country||[]).map(c=>c.name).join(', ')
       ].join(' | ');
 
+      const baseText = metaTxt + ' ' + bodyText;
       const hdp = hdpScore(baseText);
       const c15 = classifyC15(baseText,3);
       const risk = analyzeRiskAndConflict(baseText);
 
-      // event-based conflict heat boost
-      let heat = 2;
-      if(fat>=25) heat=5;
-      else if(fat>=10) heat=4;
-      else if(fat>=1) heat=3;
-      risk.conflictIndex = Math.max(risk.conflictIndex||1, heat);
-
-      out.push({
-        id: 'acled-'+(e.event_id || (iso3+'-'+when+'-'+Math.random().toString(16).slice(2))),
-        sourceType: 'acled',
-        title: `ACLED · ${title}`,
-        url: 'https://acleddata.com',
-        created: when || new Date().toISOString(),
-        country: name,
-        iso3: iso3,
-        source: 'ACLED',
-        theme: 'Conflict & Security',
-        type: 'Event',
-        body: `Date: ${when}\nLocation: ${loc}\nActors: ${(e.actor1||'')}${(e.actor2?(' vs '+e.actor2):'')}\nNotes: ${(e.notes||'')}\nFatalities: ${fat}`,
-        hdp, c15,
+      return {
+        id:r.id,
+        title:f.title||'',
+        url:f.url||'',
+        created:f['date.created']||'',
+        country:(f.country||[]).map(c=>c.name).join(', '),
+        source:(f.source||[]).map(s=>s.name).join(', '),
+        theme:(f.theme||[]).map(t=>t.name).join(', '),
+        type:(f.disaster_type||[]).map(d=>d.name).join(', '),
+        body:bodyText,
+        hdp,
+        c15,
         risk,
         riskScore: risk.riskScore,
-        conflictIndex: risk.conflictIndex,
-        lat, lon,
-        fatalities: fat,
-        event_type: e.event_type || '',
-        sub_event_type: e.sub_event_type || '',
-        location: e.location || '',
-        admin1: e.admin1 || ''
-      });
+        conflictIndex: risk.conflictIndex
+      };
     });
-  }
 
-  out.sort((a,b)=> (Date.parse(b.created)||0) - (Date.parse(a.created)||0));
-  return out.slice(0, hardMax);
-}
+    currentItems=currentItems.filter(it=>{
+      const t=Date.parse(it.created);
+      return isNaN(t) ? true : (t>=sinceMillis);
+    });
 
-async function fetchUCDP(daySpan, totalLimit){
-  // Public API. Minimal implementation:
-  // - Pull latest pages (pagesize=100)
-  // - Keep only events that match our 20 countries by country name (best-effort)
-  // - Plot points if lat/long present (varies by endpoint/version)
-  const sinceMillis = Date.now() - daySpan*86400000;
-  const maxKeep = Math.min(totalLimit, 1500);
-
-  // endpoint example: https://ucdpapi.pcr.uu.se/api/gedevents/25.1?pagesize=100
-  const base = 'https://ucdpapi.pcr.uu.se/api/gedevents/25.1';
-  const pageSize = 100;
-  const pagesToTry = 10; // up to 1000 events (best-effort)
-
-  const wantCountries = new Set(RECAP_MAP.map(x=>x.name.toLowerCase()));
-  const isoByName = COUNTRY_NAME_TO_ISO3;
-
-  const out = [];
-  for(let page=1; page<=pagesToTry; page++){
-    if(out.length >= maxKeep) break;
-    const url = new URL(base);
-    url.searchParams.set('pagesize', String(pageSize));
-    url.searchParams.set('page', String(page));
-
-    const res = await fetch(url.toString());
-    if(!res.ok){
-      const t = await res.text().catch(()=> '');
-      throw new Error('UCDP HTTP '+res.status+' :: '+t.slice(0,220));
-    }
-    const json = await res.json();
-    const rows = (json && (json.Result || json.result || json.data || json)) || [];
-    const arr = Array.isArray(rows) ? rows : (rows.Result || rows.data || []);
-
-    if(!Array.isArray(arr) || !arr.length) break;
-
-    for(const r of arr){
-      if(out.length >= maxKeep) break;
-
-      // date fields vary
-      const d = (r.date_start || r.dateStart || r.date || r.event_date || r.time || r.year || '');
-      const created = d ? String(d) : '';
-      const t = Date.parse(created);
-      if(!isNaN(t) && t < sinceMillis) continue;
-
-      // Country name fields vary
-      const cn =
-        (r.country || r.country_name || r.countryname || r.country_name1 || r.country_name2 ||
-         r.side_a_country || r.side_b_country || r.location_country || r.geo_area || '').toString();
-      const cnLow = cn.toLowerCase();
-
-      // try match our 20 country names anywhere in text
-      let matchedName = null;
-      for(const n of wantCountries){
-        if(cnLow.includes(n)){ matchedName = n; break; }
-      }
-      // if not found, try a broader scan in row JSON
-      if(!matchedName){
-        const blob = JSON.stringify(r).toLowerCase();
-        for(const n of wantCountries){
-          if(blob.includes(n)){ matchedName = n; break; }
-        }
-      }
-      if(!matchedName) continue;
-
-      const iso3 = isoByName[matchedName] || '';
-      const name = (RECAP_MAP.find(x=>x.iso3===iso3)||{}).name || matchedName;
-
-      const lat = safeNum(r.latitude ?? r.lat ?? r.ged_latitude ?? r.geom_lat ?? null);
-      const lon = safeNum(r.longitude ?? r.lon ?? r.ged_longitude ?? r.geom_lon ?? null);
-
-      // deaths fields vary
-      const deaths = safeNum(r.best ?? r.deaths ?? r.deaths_a ?? r.deaths_b ?? r.fatalities ?? r.deaths_total ?? 0) ?? 0;
-
-      const title = r.event_type ? String(r.event_type) : (r.type_of_violence ? ('Violence ' + r.type_of_violence) : 'UCDP Event');
-
-      const baseText = ['UCDP', name, iso3, title, 'deaths '+deaths, JSON.stringify(r).slice(0,800)].join(' | ');
-      const hdp = hdpScore(baseText);
-      const c15 = classifyC15(baseText,3);
-      const risk = analyzeRiskAndConflict(baseText);
-
-      // event-based conflict heat boost
-      let heat = 2;
-      if(deaths>=25) heat=5;
-      else if(deaths>=10) heat=4;
-      else if(deaths>=1) heat=3;
-      risk.conflictIndex = Math.max(risk.conflictIndex||1, heat);
-
-      out.push({
-        id: 'ucdp-'+(r.id || r.ged_id || (iso3+'-'+created+'-'+Math.random().toString(16).slice(2))),
-        sourceType: 'ucdp',
-        title: `UCDP · ${title}`,
-        url: 'https://ucdp.uu.se',
-        created: created || new Date().toISOString(),
-        country: name,
-        iso3,
-        source: 'UCDP',
-        theme: 'Conflict & Peace',
-        type: 'Event',
-        body: JSON.stringify(r, null, 2),
-        hdp, c15,
-        risk,
-        riskScore: risk.riskScore,
-        conflictIndex: risk.conflictIndex,
-        lat: (lat==null?null:lat),
-        lon: (lon==null?null:lon),
-        deaths
-      });
-    }
-  }
-
-  out.sort((a,b)=> (Date.parse(b.created)||0) - (Date.parse(a.created)||0));
-  return out.slice(0, maxKeep);
-}
-
-/* =============================
-   Apply filters + render all
-============================= */
-function applyFiltersAndRender(){
-  const filtered = applyFilters(currentItems);
-  updateDashboard(filtered);
-  renderTable(filtered);
-  renderMap();
-}
-
-/* =============================
-   Fetch orchestration
-============================= */
-async function runFetch(){
-  const status = document.getElementById('status');
-  status.textContent = 'Fetching...';
-  status.className = 'small';
-
-  const years = Number(document.getElementById('years').value || 10);
-  const daySpan = Math.round(years * 365.25);
-  const limit = MAX_ITEMS;
-
-  const useRW   = document.getElementById('use-reliefweb').checked;
-  const useA    = document.getElementById('use-acled').checked;
-  const useU    = document.getElementById('use-ucdp').checked;
-
-  // indicator fetch happens separately (selected country)
-  // toggles: worldbank / unsdg / fts / dtm are used in refreshSelectedIndicators()
-
-  try{
-    let all = [];
-
-    if(useRW){
-      const rw = await fetchReliefWeb(daySpan, limit);
-      all = all.concat(rw);
-    }
-    if(useA){
-      const a = await fetchACLED(daySpan, limit);
-      all = all.concat(a);
-    }
-    if(useU){
-      const u = await fetchUCDP(daySpan, limit);
-      all = all.concat(u);
+    if(!currentItems.length){
+      setStatus('st-reliefweb','warn','Ok (0)');
+      st.textContent='Done (0)';
+      out.innerHTML='<div class="small">No Items Matched.</div>';
+      renderDashboardTiles();
+      return;
     }
 
-    all.sort((a,b)=> (Date.parse(b.created)||0) - (Date.parse(a.created)||0));
-    if(all.length > limit) all = all.slice(0, limit);
+    setStatus('st-reliefweb','ok','Ok ('+currentItems.length+')');
+    st.textContent='Done ('+currentItems.length+' Items)';
+    renderDashboardTiles();
 
-    currentItems = all;
+    let rows='';
+    currentItems.forEach((it,i)=>{
+      rows+=`
+        <tr>
+          <td style="width:40px"><input type="checkbox" class="rw-check" data-i="${i}"></td>
+          <td class="title-cell" style="cursor:pointer;text-decoration:underline">${escapeHTML(it.title)}</td>
+          <td>${escapeHTML(it.country)}</td>
+          <td>${escapeHTML(it.source)}</td>
+          <td>${renderRiskBadge(it.risk)}</td>
+          <td>${renderConflictBadge(it.conflictIndex)}</td>
+          <td>${hbarHTML(it.hdp)}</td>
+          <td>${renderC15Badges(it.c15)}</td>
+          <td><a href="${escapeAttr(it.url)}" target="_blank" rel="noopener">Link</a></td>
+        </tr>`;
+    });
 
-    renderPartnerDropdown(currentItems);
+    out.innerHTML=`
+      <table>
+        <thead>
+          <tr>
+            <th></th><th>Title</th><th>Country</th><th>Source</th>
+            <th>Risk</th><th>Conflict</th><th>Hdp</th><th>C1–C15</th><th>Url</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
 
-    // sensible map layer defaults
-    document.getElementById('layer-acled').checked = useA;
-    document.getElementById('layer-ucdp').checked  = useU;
-
-    status.textContent = `Done · ${currentItems.length} Items`;
-    applyFiltersAndRender();
-
-    // refresh indicators panel (if a country already selected)
-    await refreshSelectedIndicators();
+    out.querySelectorAll('.title-cell').forEach((td,idx)=>{
+      td.onclick=()=> openSummaryModal(currentItems[idx]);
+    });
 
   }catch(e){
-    status.textContent = 'Error';
-    status.className = 'small err';
-    document.getElementById('results').innerHTML = `<div class="small err">${escapeHTML(e.message || String(e))}</div>`;
-    countryLayer.clearLayers();
-    acledLayer.clearLayers();
-    ucdpLayer.clearLayers();
+    setStatus('st-reliefweb','bad','Error');
+    st.textContent='ReliefWeb Error';
+    out.innerHTML='<div class="small err">'+escapeHTML(e.message)+'</div>';
   }
 }
-document.getElementById('fetch').onclick = runFetch;
 
 /* =============================
-   Indicators refresh triggers
+   External sources (minimal “connectivity + small sample”)
+   - UCDP: CORS blocked → proxy required in browser
+   - FTS: use api.hpc.tools base (docs mention v2 at api.hpc.tools) but path may vary by deployment
 ============================= */
-document.getElementById('use-worldbank').onchange = refreshSelectedIndicators;
-document.getElementById('use-unsdg').onchange = refreshSelectedIndicators;
-document.getElementById('use-fts').onchange = refreshSelectedIndicators;
-document.getElementById('use-dtm').onchange = refreshSelectedIndicators;
-document.getElementById('wb-ind').onchange = refreshSelectedIndicators;
-document.getElementById('ind-year').onchange = refreshSelectedIndicators;
-document.getElementById('sdg-ind').onchange = refreshSelectedIndicators;
-document.getElementById('fts-year').onchange = refreshSelectedIndicators;
-document.getElementById('dtm-url').onchange = refreshSelectedIndicators;
+async function fetchUcdp(){
+  setStatus('st-ucdp','warn','Loading');
+  const base = (document.getElementById('ucdp-base').value||'').trim();
+  const iso3s = getSelectedIso3();
+  // UCDP uses different filters; here we just do a minimal pagesize sample per ISO3
+  // This endpoint is known, but direct browser calls are often CORS-blocked → proxy required.
+  try{
+    let total = 0;
+    for(const iso3 of iso3s.slice(0,5)){ // limit to keep it light
+      const url = `${base}?pagesize=50&iso=${encodeURIComponent(iso3)}`;
+      const json = await fetchJsonSmart(url, true); // needs proxy
+      const n = (json && json.Result && json.Result.length) ? json.Result.length : (json && json.data ? json.data.length : 0);
+      total += n;
+      ensureSig(iso3).ucdp = { ok:true, n };
+    }
+    setStatus('st-ucdp','ok','Ok');
+  }catch(e){
+    setStatus('st-ucdp', e.message.includes('Needs Proxy') ? 'warn' : 'bad', e.message.includes('Needs Proxy') ? 'Needs Proxy' : 'Error');
+    // mark selected ISO3 with failure message
+    for(const iso3 of getSelectedIso3()){
+      ensureSig(iso3).ucdp = { ok:false, msg: e.message };
+    }
+  }
+}
+
+async function fetchFts(){
+  setStatus('st-fts','warn','Loading');
+  const base = (document.getElementById('fts-base').value||'').trim().replace(/\/$/,'');
+  const year = new Date().getFullYear();
+  // Because FTS paths can differ by version, keep it conservative and editable:
+  // Try a common pattern: {base}/appeal/year/{year}
+  // If your org uses another path, change it in UI.
+  const url = `${base}/appeal/year/${year}`;
+  try{
+    const json = await fetchJsonSmart(url, true); // likely needs proxy
+    const n = (json && json.data && json.data.length) ? json.data.length : (json && json.total ? json.total : 0);
+    for(const iso3 of getSelectedIso3()){
+      ensureSig(iso3).fts = { ok:true, n };
+    }
+    setStatus('st-fts','ok','Ok');
+  }catch(e){
+    setStatus('st-fts', e.message.includes('Needs Proxy') ? 'warn' : 'bad', e.message.includes('Needs Proxy') ? 'Needs Proxy' : 'Error');
+    for(const iso3 of getSelectedIso3()){
+      ensureSig(iso3).fts = { ok:false, msg: e.message };
+    }
+  }
+}
+
+async function fetchWorldBank(){
+  setStatus('st-wb','warn','Loading');
+  const base = (document.getElementById('wb-base').value||'').trim().replace(/\/$/,'');
+  // sample: latest GDP current USD (NY.GDP.MKTP.CD)
+  // World Bank API returns array: [metadata, [records...]]
+  try{
+    for(const iso3 of getSelectedIso3()){
+      const url = `${base}/country/${encodeURIComponent(iso3)}/indicator/NY.GDP.MKTP.CD?format=json&per_page=1`;
+      const json = await fetchJsonSmart(url, false);
+      const rec = (Array.isArray(json) && json[1] && json[1][0]) ? json[1][0] : null;
+      const val = rec ? rec.value : null;
+      ensureSig(iso3).wb = { ok:true, label: val==null ? 'Gdp: —' : ('Gdp: '+Number(val).toExponential(3)) };
+    }
+    setStatus('st-wb','ok','Ok');
+  }catch(e){
+    setStatus('st-wb','bad','Error');
+    for(const iso3 of getSelectedIso3()){
+      ensureSig(iso3).wb = { ok:false, msg: e.message };
+    }
+  }
+}
+
+async function fetchUnSdg(){
+  setStatus('st-unsdg','warn','Loading');
+  const base = (document.getElementById('unsdg-base').value||'').trim().replace(/\/$/,'');
+  // Minimal approach:
+  // 1) pull GeoArea list once (cached) then map ISO3 -> M49 geoAreaCode if present
+  // 2) fetch small sample of Indicator/Data for that geoAreaCode
+  // Note: If the API response schema differs, adjust here.
+  try{
+    // geo area list
+    const geoUrl = `${base}/GeoArea/List`;
+    const geoJson = await fetchJsonSmart(geoUrl, false);
+    const areas = geoJson && geoJson.geoArea ? geoJson.geoArea : (geoJson && geoJson.data ? geoJson.data : []);
+    const byIso3 = {};
+    (areas||[]).forEach(a=>{
+      const iso3 = (a.iso3 || a.ISO3 || '').toUpperCase();
+      const code = a.geoAreaCode || a.geoArea_Code || a.code;
+      if(iso3 && code!=null) byIso3[iso3] = code;
+    });
+
+    for(const iso3 of getSelectedIso3()){
+      const m49 = byIso3[iso3];
+      if(!m49){
+        ensureSig(iso3).unsdg = { ok:false, msg:'GeoAreaCode Not Found' };
+        continue;
+      }
+      // small sample
+      const dataUrl = `${base}/Indicator/Data?geoAreaCode=${encodeURIComponent(m49)}&pageSize=5`;
+      const dataJson = await fetchJsonSmart(dataUrl, false);
+      const n = (dataJson && dataJson.data && dataJson.data.length) ? dataJson.data.length : 0;
+      ensureSig(iso3).unsdg = { ok:true, n };
+    }
+    setStatus('st-unsdg','ok','Ok');
+  }catch(e){
+    setStatus('st-unsdg','bad','Error');
+    for(const iso3 of getSelectedIso3()){
+      ensureSig(iso3).unsdg = { ok:false, msg: e.message };
+    }
+  }
+}
+
+async function fetchDtm(){
+  setStatus('st-dtm','warn','Loading');
+  // DTM differs by endpoint and often requires auth / proxy.
+  // Here we only show “needs proxy” unless you replace dtm-base with your actual API endpoint.
+  try{
+    const base = (document.getElementById('dtm-base').value||'').trim().replace(/\/$/,'');
+    const testUrl = `${base}/api`; // placeholder ping
+    await fetchJsonSmart(testUrl, true); // likely needs proxy
+    for(const iso3 of getSelectedIso3()){
+      ensureSig(iso3).dtm = { ok:true, n: 1 };
+    }
+    setStatus('st-dtm','ok','Ok');
+  }catch(e){
+    setStatus('st-dtm', e.message.includes('Needs Proxy') ? 'warn' : 'bad', e.message.includes('Needs Proxy') ? 'Needs Proxy' : 'Error');
+    for(const iso3 of getSelectedIso3()){
+      ensureSig(iso3).dtm = { ok:false, msg: e.message };
+    }
+  }
+}
 
 /* =============================
-   Init
+   Fetch orchestrator
 ============================= */
-document.getElementById('country-chip').textContent = 'All 20';
-document.getElementById('limit-chip').textContent = 'Max ('+MAX_ITEMS+')';
-updateDashboard([]);
-renderMap();
+async function fetchAll(){
+  document.getElementById('rw-status').textContent='Fetching…';
+
+  const doReliefweb = document.getElementById('src-reliefweb').checked;
+  const doUcdp = document.getElementById('src-ucdp').checked;
+  const doFts = document.getElementById('src-fts').checked;
+  const doWb = document.getElementById('src-worldbank').checked;
+  const doUnsdg = document.getElementById('src-unsdg').checked;
+  const doDtm = document.getElementById('src-dtm').checked;
+
+  // reset ext signals for selected countries
+  for(const iso3 of getSelectedIso3()){
+    extSignals[iso3] = extSignals[iso3] || {};
+  }
+
+  try{
+    if(doReliefweb) await rwFetch();
+    else { setStatus('st-reliefweb','warn','Off'); }
+
+    // fire in parallel after reliefweb
+    const ps = [];
+    if(doUcdp) ps.push(fetchUcdp()); else setStatus('st-ucdp','warn','Off');
+    if(doFts)  ps.push(fetchFts());  else setStatus('st-fts','warn','Off');
+    if(doWb)   ps.push(fetchWorldBank()); else setStatus('st-wb','warn','Off');
+    if(doUnsdg)ps.push(fetchUnSdg()); else setStatus('st-unsdg','warn','Off');
+    if(doDtm)  ps.push(fetchDtm()); else setStatus('st-dtm','warn','Off');
+
+    await Promise.allSettled(ps);
+
+    document.getElementById('rw-status').textContent='Done';
+  }catch(e){
+    document.getElementById('rw-status').textContent='Error';
+  }
+}
+
+document.getElementById('btn-fetch-all').onclick = fetchAll;
+
+/* =============================
+   Risk narrative
+============================= */
+function buildRiskNarrative(){
+  if(!currentItems.length){ alert('Fetch ReliefWeb First.'); return; }
+
+  const now = Date.now();
+  const since = now - 30*86400000;
+  const items30 = currentItems.filter(it=>{
+    const t = Date.parse(it.created);
+    return isNaN(t) ? false : (t>=since);
+  });
+
+  const lines=[];
+  const total=items30.length;
+  const high=items30.filter(it=>it.risk && it.risk.riskLevel==='high').length;
+  const med =items30.filter(it=>it.risk && it.risk.riskLevel==='med').length;
+  const c4  =items30.filter(it=>it.conflictIndex>=4).length;
+
+  lines.push(`• Last 30 Days: ${total} Docs (High ${high}, Med ${med})`);
+  if(c4>0) lines.push(`• Conflict Heat ≥ 4: ${c4} Docs`);
+
+  const byC = {};
+  items30.forEach(it=>{
+    const c=(it.country||'').split(',')[0].trim()||'Unknown';
+    byC[c]=(byC[c]||0)+1;
+  });
+  const top = Object.entries(byC).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if(top.length) lines.push(`• Top Countries: ${top.map(([c,n])=>`${c}(${n})`).join(', ')}`);
+
+  const box=document.getElementById('risk-narrative-box');
+  box.textContent=lines.join('\n');
+  box.style.display='block';
+}
+document.getElementById('btn-risk-narrative').onclick = buildRiskNarrative;
+
+/* =============================
+   Save notes
+============================= */
+document.getElementById('rw-to-notes').onclick=function(){
+  const checks = Array.from(document.querySelectorAll('.rw-check')).filter(cb=>cb.checked);
+  if(!checks.length){ alert('Select Rows To Save.'); return; }
+  if(!currentItems.length){ alert('Fetch ReliefWeb First.'); return; }
+
+  const db=getDB();
+  const now=Date.now();
+  let added=0;
+
+  checks.forEach(cb=>{
+    const idx=Number(cb.dataset.i);
+    const it=currentItems[idx];
+    if(!it) return;
+
+    const meta=[it.title,it.country,it.source].join(' | ');
+    const summary=summarizeText(it.body||meta,3) || meta;
+    const id='rw-'+it.id;
+
+    if(db.notes.some(n=>n.id===id)) return;
+
+    db.notes.unshift({
+      id,
+      title:it.title,
+      body:it.body,
+      country:it.country,
+      source:it.source,
+      url:it.url,
+      created:now,
+      summary,
+      hdp:it.hdp,
+      hdpLabel:it.hdp.label,
+      c15:it.c15,
+      risk:it.risk
+    });
+    added++;
+  });
+
+  setDB(db);
+  renderNotes(document.getElementById('notes-q').value);
+  document.getElementById('rw-status').textContent = added+' Saved';
+};
+
+document.getElementById('notes-refresh').onclick=function(){ renderNotes(document.getElementById('notes-q').value); };
+document.getElementById('notes-clear').onclick=function(){
+  if(!confirm('Delete All Notes?')) return;
+  setDB({notes:[]});
+  renderNotes('');
+};
+document.getElementById('notes-q').addEventListener('input',function(e){ renderNotes(e.target.value); });
+
+/* dashboard controls */
+document.getElementById('dash-recalc').onclick = renderDashboardTiles;
+document.getElementById('dash-metric').onchange = renderDashboardTiles;
+document.getElementById('dash-agg').onchange = renderDashboardTiles;
+document.getElementById('dash-sort').onchange = renderDashboardTiles;
+
+/* init */
+migrateNotesIfNeeded();
+renderNotes('');
+renderDashboardTiles();
 </script>
 </body>
 </html>
