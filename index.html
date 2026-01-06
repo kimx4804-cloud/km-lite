@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Km-lite v2.3 — Multi-source · HdP(binary) · Risk · C1~C15 · Acled Map</title>
+<title>Km-lite v2.6 — ReliefWeb + Acled + Composite conflict risk + Partner filter (country canon fix)</title>
 
 <link
   rel="stylesheet"
@@ -33,9 +33,7 @@ body{
   margin:0; padding:14px;
   font-size:14px;
 }
-h1{
-  font-size:16px; font-weight:700; margin:0 0 10px;
-}
+h1{font-size:16px;font-weight:700;margin:0 0 10px}
 .small{color:var(--mut);font-size:12px}
 .mono{font-family:ui-monospace,Consolas,Menlo,monospace}
 .err{color:#ffb4b4}
@@ -81,7 +79,7 @@ a{color:#9bd0ff}
 @media (max-width:1100px){ .grid2{grid-template-columns:1fr;} }
 
 #map{
-  height:68vh;              /* 요구: 지도 위아래 길이 확장 */
+  height:68vh;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.10);
   overflow:hidden;
@@ -192,14 +190,12 @@ th{position:sticky;top:0;background:#0f1620;z-index:2}
   margin-left:6px;
 }
 
-.sticky{
-  position:sticky; top:8px; z-index:9;
-}
+.sticky{position:sticky;top:8px;z-index:9}
 </style>
 </head>
 
 <body>
-<h1>Km-lite v2.3 (ReliefWeb + Acled map + Partner filter)</h1>
+<h1>Km-lite v2.6 (ReliefWeb + Acled + Composite conflict risk + Partner filter)</h1>
 
 <div class="panel sticky">
   <div class="flex" style="justify-content:space-between;align-items:flex-start">
@@ -236,18 +232,41 @@ th{position:sticky;top:0;background:#0f1620;z-index:2}
     </div>
   </div>
 
+  <div class="flex" style="gap:10px;align-items:center;margin-top:8px">
+    <span class="small"><b>Composite Weights</b></span>
+
+    <label class="small">Rw Docs</label>
+    <input id="w-doc" type="number" value="0.45" step="0.05" min="0" max="1" style="width:80px"/>
+
+    <label class="small">Rw Heat</label>
+    <input id="w-heat" type="number" value="0.25" step="0.05" min="0" max="1" style="width:80px"/>
+
+    <label class="small">Acled Count</label>
+    <input id="w-ev" type="number" value="0.20" step="0.05" min="0" max="1" style="width:90px"/>
+
+    <label class="small">Acled Fatalities</label>
+    <input id="w-fat" type="number" value="0.10" step="0.05" min="0" max="1" style="width:110px"/>
+
+    <span class="small" id="w-sum"></span>
+  </div>
+
   <div class="small" style="margin-top:8px">
-    Click a country tile to filter table + map. Proxy required for Acled on GitHub Pages.
+    Click a country tile to filter table + map. Proxy is required for Acled on GitHub Pages.
   </div>
 </div>
 
 <div class="grid2" style="margin-top:10px">
   <div class="panel">
     <div class="flex" style="justify-content:space-between">
-      <div class="small"><strong>Map</strong> (Acled event points)</div>
+      <div class="small"><strong>Map</strong></div>
       <div class="flex">
         <span class="badge" id="active-country-badge">Active: None</span>
-        <label class="small"><input type="checkbox" id="map-acled" checked> Show Acled</label>
+        <label class="small">Layer</label>
+        <select id="map-layer">
+          <option value="composite" selected>Composite Risk</option>
+          <option value="acled">Acled Points</option>
+          <option value="doc">Doc Risk</option>
+        </select>
       </div>
     </div>
     <div id="map" style="margin-top:10px"></div>
@@ -267,6 +286,7 @@ th{position:sticky;top:0;background:#0f1620;z-index:2}
       <div>Metric</div>
       <div class="flex">
         <select id="dash-metric">
+          <option value="composite">Composite Risk</option>
           <option value="risk">Risk (Docs)</option>
           <option value="heat">Conflict Heat (Docs)</option>
           <option value="acled">Acled Events</option>
@@ -301,7 +321,6 @@ th{position:sticky;top:0;background:#0f1620;z-index:2}
         background:rgba(15,22,32,.18)"></div>
 </div>
 
-<!-- Notes modal -->
 <div id="notes-modal" class="modal">
   <div id="summary-box">
     <div class="flex" style="justify-content:space-between;align-items:center">
@@ -317,7 +336,6 @@ th{position:sticky;top:0;background:#0f1620;z-index:2}
   </div>
 </div>
 
-<!-- Summary modal -->
 <div id="summary-modal" class="modal">
   <div id="summary-box">
     <div id="summary-title" style="font-weight:700;font-size:16px;margin-bottom:10px;"></div>
@@ -328,7 +346,6 @@ th{position:sticky;top:0;background:#0f1620;z-index:2}
   </div>
 </div>
 
-<!-- Country filter modal -->
 <div id="country-modal" class="modal">
   <div id="country-box">
     <div class="flex" style="justify-content:space-between">
@@ -364,26 +381,28 @@ function escapeHTML(s){
 }
 function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
 
-function firstCountryName(countryField){
-  const c = (countryField||'').split(',')[0].trim();
-  return c || 'Unknown';
-}
-
-function getProxyBase(){
-  const v = (document.getElementById('proxy-base').value || '').trim();
-  return v.endsWith('?url=') || v.endsWith('?url=') ? v : v; // trust user input
-}
-function proxify(url){
-  return getProxyBase() + encodeURIComponent(url);
-}
-
-function nowMinusDays(days){ return new Date(Date.now() - days*86400000); }
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
 function isoDate(d){
   const x = new Date(d);
   const yyyy = x.getUTCFullYear();
   const mm = String(x.getUTCMonth()+1).padStart(2,'0');
   const dd = String(x.getUTCDate()).padStart(2,'0');
   return `${yyyy}-${mm}-${dd}`;
+}
+function getProxyBase(){
+  const v = (document.getElementById('proxy-base').value || '').trim();
+  return v;
+}
+function proxify(url){
+  return getProxyBase() + encodeURIComponent(url);
+}
+
+/* Simple color ramp (0..1) */
+function colorRamp01(t){
+  const x = clamp01(t);
+  if(x <= 0.25) return 'rgba(97,214,97,0.75)';
+  if(x <= 0.55) return 'rgba(242,180,90,0.78)';
+  return 'rgba(255,92,92,0.80)';
 }
 
 /* =============================
@@ -392,7 +411,6 @@ function isoDate(d){
 const APPNAME   = "HyunKim+recap_km_lite+a5Ttg7U8";
 const DB_KEY    = "km-lite-db";
 
-/* 20 countries */
 const RECAP = [
   {name:'Burundi', iso3:'BDI', acledIso:'108', lat:-3.36, lon:29.92},
   {name:'Central African Republic', iso3:'CAF', acledIso:'140', lat:6.61, lon:20.94},
@@ -416,10 +434,44 @@ const RECAP = [
   {name:'Timor-Leste', iso3:'TLS', acledIso:'626', lat:-8.87, lon:125.73}
 ];
 
-let pickedISO3 = [];          // filter set
-let activeCountry = '';       // click-to-filter
-let currentReports = [];      // ReliefWeb reports (processed)
-let currentEvents = [];       // Acled events (processed)
+const ISO3_TO_NAME = Object.fromEntries(RECAP.map(x=>[x.iso3, x.name]));
+const CANON_NAMES = new Set(RECAP.map(x=>x.name));
+
+/* ReliefWeb name variants fallback (only used if iso3 not present) */
+const RW_NAME_FALLBACK = [
+  {match:/iran/i, canon:'Iran'},
+  {match:/syrian/i, canon:'Syria'},
+  {match:/occupied palestinian|palestin/i, canon:'Palestine'},
+  {match:/timor/i, canon:'Timor-Leste'},
+  {match:/sao tome/i, canon:'Sao Tome and Principe'},
+  {match:/central african/i, canon:'Central African Republic'},
+  {match:/south sudan/i, canon:'South Sudan'}
+];
+
+let pickedISO3 = [];
+let activeCountry = '';
+let currentReports = []; // each report has: countryCanon (important)
+let currentEvents  = []; // each event has: country (canon)
+
+/* =============================
+   Canonical country handling
+============================= */
+function canonFromIso3(iso3){
+  return ISO3_TO_NAME[String(iso3||'').toUpperCase()] || '';
+}
+function canonFromNames(namesStr){
+  const s = String(namesStr||'');
+  for(const r of RW_NAME_FALLBACK){
+    if(r.match.test(s)) return r.canon;
+  }
+  return '';
+}
+function reportCountryCanon(it){
+  return it.countryCanon || '';
+}
+function reportCountryDisplay(it){
+  return it.countryDisplay || it.countryCanon || '';
+}
 
 /* =============================
    HDP binary
@@ -549,7 +601,6 @@ function analyzeRiskAndConflict(text){
     let cnt = 0;
     arr.forEach(term=>{
       const t = term.toLowerCase();
-      if(!t) return;
       const re = new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g');
       const m = T.match(re);
       if(m && m.length) cnt += m.length;
@@ -571,7 +622,6 @@ function analyzeRiskAndConflict(text){
   if(rawScore >= 18) level = 'high';
   else if(rawScore >= 8) level = 'med';
 
-  // conflict heat 1~5 from term hits
   let conflictScore = 0;
   CONFLICT_TERMS.forEach(term=>{
     const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g');
@@ -584,13 +634,11 @@ function analyzeRiskAndConflict(text){
   else if(conflictScore >= 2) conflictIndex = 3;
   else if(conflictScore >= 1) conflictIndex = 2;
 
-  // policy flag
   let policy = false;
   POLICY_TERMS.forEach(term=>{ if(T.includes(term.toLowerCase())) policy = true; });
 
   return { riskScore: rawScore, riskLevel: level, riskTags: tags, conflictIndex, policyFlag: policy };
 }
-
 function renderRiskBadge(r){
   if(!r) return '';
   const txt = r.riskLevel === 'high' ? 'High' : r.riskLevel === 'med' ? 'Med' : 'Low';
@@ -608,7 +656,7 @@ function renderConflictBadge(idx){
 }
 
 /* =============================
-  C1~C15 classifier (same as v2.2)
+  C1~C15 classifier
 ============================= */
 const CODES = {
   C1:{name:'Project Overview & Context',core:['background','project overview','context analysis','needs assessment','맥락','배경'],related:['objective','goal','목표'],ref:['overview']},
@@ -666,7 +714,6 @@ function getDB(){
   catch(e){ return {notes:[]}; }
 }
 function setDB(db){ localStorage.setItem(DB_KEY,JSON.stringify(db)); }
-
 function renderNotes(filter){
   filter=(filter||'').toLowerCase();
   const box=document.getElementById('notes-list');
@@ -714,95 +761,16 @@ function renderNotes(filter){
 }
 
 /* =============================
-  Map (Leaflet)
+  Window 24 months helper
 ============================= */
-let map, acledLayer, centroidLayer;
-function initMap(){
-  map = L.map('map', {zoomControl:true}).setView([10, 15], 2);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '&copy; OpenStreetMap'
-  }).addTo(map);
-
-  acledLayer = L.layerGroup().addTo(map);
-  centroidLayer = L.layerGroup().addTo(map);
-}
-function clearMap(){
-  acledLayer.clearLayers();
-  centroidLayer.clearLayers();
-}
-
-function fitToActive(){
-  if(activeCountry){
-    const c = RECAP.find(x=>x.name===activeCountry);
-    if(c) map.setView([c.lat, c.lon], 5);
-    return;
-  }
-  // fit to events if exist
-  const pts = getFilteredEvents();
-  if(pts.length){
-    const bounds = L.latLngBounds(pts.map(e=>[e.lat, e.lon]));
-    map.fitBounds(bounds.pad(0.2));
-  } else {
-    map.setView([10, 15], 2);
-  }
-}
-
-function renderAcledPoints(){
-  clearMap();
-  if(!document.getElementById('map-acled').checked) return;
-
-  const evs = getFilteredEvents();
-
-  if(evs.length){
-    evs.forEach(e=>{
-      const r = Math.max(3, Math.min(10, 3 + Math.log10((e.fatalities||0)+1)*3));
-      const m = L.circleMarker([e.lat, e.lon], {
-        radius: r,
-        weight: 1,
-        color: '#ff8a7a',
-        fillColor: '#ff4f3d',
-        fillOpacity: 0.65
-      });
-
-      const date = e.date ? escapeHTML(e.date) : '';
-      const t = escapeHTML(e.event_type || '');
-      const sub = escapeHTML(e.sub_event_type || '');
-      const fat = (e.fatalities==null?'':String(e.fatalities));
-      m.bindPopup(`
-        <div style="font-size:13px;line-height:1.35">
-          <div style="font-weight:700">${escapeHTML(e.country)}</div>
-          <div class="small">${date}</div>
-          <div>${t}${sub?(' · '+sub):''}</div>
-          <div>Fatalities: ${fat}</div>
-          ${e.source?`<div class="small">${escapeHTML(e.source)}</div>`:''}
-        </div>
-      `);
-
-      m.addTo(acledLayer);
-    });
-  } else {
-    // show centroids (gray) when no event points
-    const countries = getActiveCountries();
-    countries.forEach(name=>{
-      const c = RECAP.find(x=>x.name===name);
-      if(!c) return;
-      L.circleMarker([c.lat, c.lon], {
-        radius: 6,
-        weight: 1,
-        color:'#8aa0bb',
-        fillColor:'#8aa0bb',
-        fillOpacity:0.22
-      }).bindTooltip(name).addTo(centroidLayer);
-    });
-  }
-
-  fitToActive();
+function inLast24m(dateStr){
+  const t = Date.parse(dateStr);
+  if(isNaN(t)) return true;
+  return t >= (Date.now() - 730*86400000);
 }
 
 /* =============================
-  Country filter modal
+  Country filter logic
 ============================= */
 function openCountryModal(){
   const grid = document.getElementById('country-grid');
@@ -838,7 +806,7 @@ document.getElementById('country-apply').onclick = function(){
   document.getElementById('country-chip').textContent =
     pickedISO3.length ? (pickedISO3.length+' Selected') : 'All Countries';
   closeCountryModal();
-  // keep activeCountry if still allowed
+
   if(activeCountry){
     const iso3 = RECAP.find(x=>x.name===activeCountry)?.iso3;
     if(iso3 && pickedISO3.length && !pickedISO3.includes(iso3)){
@@ -856,7 +824,6 @@ document.getElementById('btn-clear-country').onclick = ()=>{
 };
 
 function getActiveCountries(){
-  // country list respecting pickedISO3 filter
   const allowed = pickedISO3.length
     ? RECAP.filter(x=>pickedISO3.includes(x.iso3)).map(x=>x.name)
     : RECAP.map(x=>x.name);
@@ -867,25 +834,19 @@ function getActiveCountries(){
 function updateActiveCountryBadge(){
   const el = document.getElementById('active-country-badge');
   el.textContent = 'Active: ' + (activeCountry || 'None');
-  document.getElementById('active-country-badge').style.borderColor =
-    activeCountry ? 'rgba(58,163,255,.55)' : 'rgba(255,255,255,.12)';
-  document.getElementById('active-country-badge').style.color =
-    activeCountry ? '#cfe7ff' : 'var(--mut)';
+  el.style.borderColor = activeCountry ? 'rgba(58,163,255,.55)' : 'rgba(255,255,255,.12)';
+  el.style.color = activeCountry ? '#cfe7ff' : 'var(--mut)';
 }
 
 /* =============================
-  Partner filter (auto from reports)
+  Partner filter (from reports)
 ============================= */
-function normalizePartnerName(s){
-  return (s||'').trim();
-}
 function rebuildPartnerDropdown(){
   const sel = document.getElementById('partner-filter');
   const current = sel.value;
 
   const partners = new Set();
-  currentReports.forEach(it=>{
-    // it.source is a comma-joined list; split
+  (currentReports||[]).forEach(it=>{
     (it.source||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(p=>partners.add(p));
   });
 
@@ -894,19 +855,9 @@ function rebuildPartnerDropdown(){
     `<option value="${escapeAttr(p)}">${escapeHTML(p)}</option>`
   ).join('');
 
-  // restore selection if still present
   if(current && arr.includes(current)) sel.value = current;
 }
 document.getElementById('partner-filter').onchange = ()=> rerenderAll();
-
-/* =============================
-  Window 24 months filter helper
-============================= */
-function inLast24m(dateStr){
-  const t = Date.parse(dateStr);
-  if(isNaN(t)) return true;
-  return t >= (Date.now() - 730*86400000);
-}
 
 /* =============================
   Data getters with filters
@@ -914,22 +865,20 @@ function inLast24m(dateStr){
 function getFilteredReports(){
   const partner = document.getElementById('partner-filter').value || '';
   const q = (document.getElementById('table-q').value || '').toLowerCase();
-
   const allowedCountries = new Set(getActiveCountries());
 
   return (currentReports||[]).filter(it=>{
-    const c = firstCountryName(it.country);
-    if(!allowedCountries.has(c)) return false;
+    const canon = reportCountryCanon(it);
+    if(!canon || !allowedCountries.has(canon)) return false;
 
     if(partner){
       const src = (it.source||'');
-      // exact contains match is fine
       if(!src.split(',').map(x=>x.trim()).includes(partner)) return false;
     }
 
     if(q){
       const hay = [
-        it.title,it.country,it.source,it.theme,it.type,
+        it.title, it.countryDisplay, it.countryCanon, it.source, it.theme, it.type,
         it.hdp && it.hdp.label,
         (it.c15||[]).map(x=>x.code+' '+x.name).join(' '),
         it.risk && it.risk.riskTags ? it.risk.riskTags.join(' ') : ''
@@ -939,30 +888,25 @@ function getFilteredReports(){
     return true;
   });
 }
-
 function getFilteredEvents(){
   const allowedCountries = new Set(getActiveCountries());
   return (currentEvents||[]).filter(e=> allowedCountries.has(e.country));
 }
 
 /* =============================
-  Dashboard aggregation
+  Stats for dashboard
 ============================= */
 function computeDocStats24m(reports){
   const r24 = reports.filter(it=>inLast24m(it.created));
   const docs = r24.length;
   const high = r24.filter(it=>it.risk && it.risk.riskLevel==='high').length;
   const c4   = r24.filter(it=> (it.risk && it.risk.conflictIndex>=4)).length;
-  const riskVals = r24.map(it=>it.riskScore).filter(v=>v!=null && isFinite(v));
-  const heatVals = r24.map(it=>it.risk && it.risk.conflictIndex).filter(v=>v!=null && isFinite(v));
-  return {docs, high, c4, riskVals, heatVals};
+  return {docs, high, c4};
 }
-
 function computeAcledStats24m(events){
   const e24 = events.filter(e=>inLast24m(e.date));
   return {events: e24.length};
 }
-
 function setKV(){
   const reports = getFilteredReports();
   const events  = getFilteredEvents();
@@ -976,22 +920,148 @@ function setKV(){
   document.getElementById('kv-ev').textContent = es.events.toString();
 }
 
-function aggregateCountryRows(){
-  const metric = document.getElementById('dash-metric').value; // risk|heat|acled
-  const agg    = document.getElementById('dash-agg').value;    // mean|max
-  const sort   = document.getElementById('dash-sort').value;   // desc|name
+/* =============================
+  Composite conflict risk (0-100)
+============================= */
+function readWeights(){
+  const wDoc  = Number(document.getElementById('w-doc')?.value ?? 0.45);
+  const wHeat = Number(document.getElementById('w-heat')?.value ?? 0.25);
+  const wEv   = Number(document.getElementById('w-ev')?.value ?? 0.20);
+  const wFat  = Number(document.getElementById('w-fat')?.value ?? 0.10);
 
-  const allowed = getActiveCountries();
-  // NOTE: If activeCountry set, tiles should still show all allowed countries, not only active one.
-  // Requirement is "click country -> filter". So tiles can either keep all or show filtered.
-  // We'll keep showing allowed list (pickedISO3), but active filter still applies to table/map/kv.
-  // To avoid confusion, when activeCountry is set, we still show all tiles but highlight active.
+  const sum = (wDoc+wHeat+wEv+wFat);
+  const el = document.getElementById('w-sum');
+  if(el){
+    el.textContent = `Sum=${Math.round(sum*100)/100}`;
+    el.style.color = (Math.abs(sum-1) <= 0.05) ? 'var(--mut)' : '#ffb4b4';
+  }
+  if(sum<=0) return {wDoc:0.45,wHeat:0.25,wEv:0.20,wFat:0.10};
+
+  return { wDoc:wDoc/sum, wHeat:wHeat/sum, wEv:wEv/sum, wFat:wFat/sum };
+}
+function normLogMax(x, maxX){
+  if(maxX<=0) return 0;
+  return clamp01(Math.log1p(Math.max(0,x)) / Math.log1p(maxX));
+}
+
+function aggregateDocsByCountry24m(reports){
+  const buckets = {};
+  RECAP.forEach(c=>{
+    buckets[c.name] = {risk:[], heat:[], n:0, high:0, c4:0};
+  });
+
+  (reports||[]).filter(r=>inLast24m(r.created)).forEach(r=>{
+    const c = reportCountryCanon(r);
+    if(!buckets[c]) return;
+    buckets[c].n += 1;
+
+    const rs = r.risk?.riskScore;
+    const hi = r.risk?.conflictIndex;
+
+    if(rs!=null && isFinite(rs)) buckets[c].risk.push(Number(rs));
+    if(hi!=null && isFinite(hi)) buckets[c].heat.push(Number(hi));
+    if(r.risk?.riskLevel==='high') buckets[c].high += 1;
+    if((r.risk?.conflictIndex||0) >= 4) buckets[c].c4 += 1;
+  });
+
+  return buckets;
+}
+function aggregateRW24m(reports){
+  const b = aggregateDocsByCountry24m(reports);
+  const out = {};
+  Object.keys(b).forEach(c=>{
+    const x = b[c];
+    const meanRisk = x.risk.length ? (x.risk.reduce((a,d)=>a+d,0)/x.risk.length) : 0;
+    const meanHeat = x.heat.length ? (x.heat.reduce((a,d)=>a+d,0)/x.heat.length) : 0;
+    out[c] = { meanRisk, meanHeat, n:x.n, high:x.high, c4:x.c4 };
+  });
+  return out;
+}
+function aggregateAcled24m(events){
+  const out = {};
+  RECAP.forEach(c=>{ out[c.name] = {count:0, fat:0}; });
+  (events||[]).filter(e=>inLast24m(e.date)).forEach(e=>{
+    if(out[e.country]==null) return;
+    out[e.country].count += 1;
+    out[e.country].fat += (Number(e.fatalities)||0);
+  });
+  return out;
+}
+
+function computeComposite24m(){
+  const W = readWeights();
+  const rw = aggregateRW24m(getFilteredReports());
+  const ac = aggregateAcled24m(getFilteredEvents());
+
+  const maxDocs = Math.max(...RECAP.map(c=> (rw[c.name]?.n||0)));
+  const maxMeanRisk = Math.max(...RECAP.map(c=> (rw[c.name]?.meanRisk||0)));
+  const maxMeanHeat = Math.max(...RECAP.map(c=> (rw[c.name]?.meanHeat||0)));
+  const maxEv = Math.max(...RECAP.map(c=> (ac[c.name]?.count||0)));
+  const maxFat = Math.max(...RECAP.map(c=> (ac[c.name]?.fat||0)));
+
+  const out = {};
+  RECAP.forEach(c=>{
+    const name = c.name;
+    const r = rw[name] || {meanRisk:0, meanHeat:0, n:0, high:0, c4:0};
+    const a = ac[name] || {count:0, fat:0};
+
+    const docN  = normLogMax(r.n, maxDocs);
+    const riskN = (maxMeanRisk>0) ? clamp01(r.meanRisk / maxMeanRisk) : 0;
+    const heatN = (maxMeanHeat>0) ? clamp01(r.meanHeat / maxMeanHeat) : 0;
+    const evN   = normLogMax(a.count, maxEv);
+    const fatN  = normLogMax(a.fat, maxFat);
+
+    const rwDocComponent = docN * riskN;
+
+    const s01 =
+      W.wDoc  * rwDocComponent +
+      W.wHeat * heatN +
+      W.wEv   * evN +
+      W.wFat  * fatN;
+
+    const score = Math.round(clamp01(s01) * 1000) / 10;
+
+    out[name] = {
+      score,
+      docs24m:r.n, meanRisk:r.meanRisk, meanHeat:r.meanHeat,
+      ev24m:a.count, fat24m:a.fat
+    };
+  });
+
+  return out;
+}
+
+/* =============================
+  Dashboard aggregation
+============================= */
+function aggregateCountryRows(){
+  const metric = document.getElementById('dash-metric').value;
+  const agg    = document.getElementById('dash-agg').value;
+  const sort   = document.getElementById('dash-sort').value;
+
   const tileCountries = (pickedISO3.length
     ? RECAP.filter(x=>pickedISO3.includes(x.iso3)).map(x=>x.name)
     : RECAP.map(x=>x.name)
   );
 
-  // bucket values per country in last 24m
+  if(metric === 'composite'){
+    const comp = computeComposite24m();
+    let rows = tileCountries.map(c=>({
+      country:c,
+      value:(comp[c]?.score ?? null),
+      n: (comp[c]?.docs24m ?? 0) + (comp[c]?.ev24m ?? 0)
+    }));
+
+    if(sort==='name') rows.sort((a,b)=>a.country.localeCompare(b.country));
+    else rows.sort((a,b)=>{
+      const av=(a.value==null?-Infinity:a.value);
+      const bv=(b.value==null?-Infinity:b.value);
+      return bv-av;
+    });
+
+    return rows;
+  }
+
   const buckets = {};
   if(metric==='acled'){
     const evs = (currentEvents||[]).filter(e=>inLast24m(e.date));
@@ -1002,7 +1072,8 @@ function aggregateCountryRows(){
   } else {
     const reps = (currentReports||[]).filter(r=>inLast24m(r.created));
     reps.forEach(r=>{
-      const c = firstCountryName(r.country);
+      const c = reportCountryCanon(r);
+      if(!CANON_NAMES.has(c)) return;
       if(!buckets[c]) buckets[c]=[];
       const v = (metric==='heat') ? (r.risk?.conflictIndex ?? null) : (r.risk?.riskScore ?? null);
       if(v!=null && isFinite(v)) buckets[c].push(Number(v));
@@ -1014,7 +1085,6 @@ function aggregateCountryRows(){
     let value=null;
     if(arr.length){
       value = (agg==='max') ? Math.max(...arr) : (arr.reduce((a,b)=>a+b,0)/arr.length);
-      // For acled metric, mean/max are same-ish but keep consistent
     }
     return {country:c, value, n:arr.length};
   });
@@ -1031,14 +1101,9 @@ function aggregateCountryRows(){
 
   return rows;
 }
-
 function renderDashboardTiles(){
   const rows = aggregateCountryRows();
   const metric = document.getElementById('dash-metric').value;
-
-  const vals = rows.map(x=>x.value).filter(v=>v!=null && isFinite(v));
-  const vmax = vals.length ? Math.max(...vals) : 0;
-
   const grid = document.getElementById('dash-grid');
 
   if(!currentReports.length && !currentEvents.length){
@@ -1048,7 +1113,10 @@ function renderDashboardTiles(){
     return;
   }
 
-  const unit = (metric==='risk') ? 'Risk' : (metric==='heat' ? 'Heat' : 'Events');
+  const unit =
+    (metric==='composite') ? 'Risk(0-100)' :
+    (metric==='risk') ? 'Risk' :
+    (metric==='heat') ? 'Heat' : 'Events';
 
   grid.innerHTML = rows.map(x=>{
     const v = x.value;
@@ -1065,11 +1133,10 @@ function renderDashboardTiles(){
     `;
   }).join('');
 
-  // requirement #1: country click -> filter that country items
   grid.querySelectorAll('.dash-tile').forEach(el=>{
     el.onclick = ()=>{
       const c = el.dataset.country;
-      activeCountry = (activeCountry===c) ? '' : c; // toggle
+      activeCountry = (activeCountry===c) ? '' : c;
       updateActiveCountryBadge();
       rerenderAll();
     };
@@ -1077,7 +1144,7 @@ function renderDashboardTiles(){
 }
 
 /* =============================
-  ReliefWeb fetch
+  ReliefWeb fetch (country canon fix)
 ============================= */
 async function fetchReliefWeb(){
   const years = Number(document.getElementById('years').value || 10);
@@ -1115,7 +1182,7 @@ async function fetchReliefWeb(){
 
   if(!res.ok){
     const t = await res.text().catch(()=> '');
-    throw new Error(`ReliefWeb HTTP ${res.status}: ${t.slice(0,300)}`);
+    throw new Error(`ReliefWeb Http ${res.status}: ${t.slice(0,300)}`);
   }
 
   const json=await res.json();
@@ -1128,12 +1195,23 @@ async function fetchReliefWeb(){
       .replace(/<[^>]+>/g,' ');
     const bodyText=(f.body && String(f.body).trim().length>0) ? f.body : rawHtml;
 
+    const countries = (f.country||[]);
+    const countryDisplay = countries.map(c=>c.name).join(', ');
+    const iso3Candidates = countries.map(c=>String(c.iso3||'').toUpperCase()).filter(Boolean);
+    const iso3Hit = iso3Candidates.find(x=>ISO3_TO_NAME[x]);
+    let countryCanon = iso3Hit ? canonFromIso3(iso3Hit) : '';
+
+    if(!countryCanon){
+      countryCanon = canonFromNames(countryDisplay);
+    }
+
+    // If still missing, keep it but mark as non-canon (will not be used in RECAP aggregate)
     const metaTxt=[
       f.title||'',
       (f.theme||[]).map(t=>t.name).join(', '),
       (f.disaster_type||[]).map(d=>d.name).join(', '),
       (f.source||[]).map(s=>s.name).join(', '),
-      (f.country||[]).map(c=>c.name).join(', ')
+      countryDisplay
     ].join(' | ');
 
     const baseText = metaTxt + ' ' + bodyText;
@@ -1147,7 +1225,8 @@ async function fetchReliefWeb(){
       title:f.title||'',
       url:f.url||'',
       created:f['date.created']||'',
-      country:(f.country||[]).map(c=>c.name).join(', '),
+      countryCanon: countryCanon || '',          // IMPORTANT
+      countryDisplay: countryDisplay || '',
       source:(f.source||[]).map(s=>s.name).join(', '),
       theme:(f.theme||[]).map(t=>t.name).join(', '),
       type:(f.disaster_type||[]).map(d=>d.name).join(', '),
@@ -1162,27 +1241,21 @@ async function fetchReliefWeb(){
     return isNaN(t) ? true : (t>=sinceMillis);
   });
 
+  // Optional: if a report has no canon country, keep it in table search only when no country filter.
   return items;
 }
 
 /* =============================
   Acled fetch (via proxy)
-  - event_date format: YYYY-MM-DD|YYYY-MM-DD
-  - pagination: page=1..N
 ============================= */
 async function fetchAcled(){
   const email = (document.getElementById('acled-email').value || '').trim();
   const key   = (document.getElementById('acled-key').value || '').trim();
-
-  if(!email || !key){
-    // allow empty = no fetch
-    return [];
-  }
+  if(!email || !key) return [];
 
   const years = Number(document.getElementById('years').value || 10);
   const limit = Math.min(Number(document.getElementById('max-items').value || 1000), 5000);
 
-  // Keep Acled volume manageable: fetch up to 5 pages per country, 500 per page
   const perPage = Math.min(500, Math.max(50, Math.floor(limit/5)));
   const maxPages = 5;
 
@@ -1208,7 +1281,7 @@ async function fetchAcled(){
       const res = await fetch(proxify(realUrl));
       if(!res.ok){
         const t = await res.text().catch(()=> '');
-        throw new Error(`Acled HTTP ${res.status}: ${t.slice(0,200)}`);
+        throw new Error(`Acled Http ${res.status}: ${t.slice(0,200)}`);
       }
       const j = await res.json();
 
@@ -1221,7 +1294,7 @@ async function fetchAcled(){
         if(!isFinite(lat) || !isFinite(lon)) return;
 
         all.push({
-          country: c.name,
+          country: c.name,  // canon already
           iso3: c.iso3,
           date: e.event_date || '',
           lat, lon,
@@ -1232,12 +1305,10 @@ async function fetchAcled(){
         });
       });
 
-      // stop if fewer than perPage (likely end)
       if(data.length < perPage) break;
     }
   }
 
-  // client-side cut to Max Items, newest first
   all.sort((a,b)=> (Date.parse(b.date)||0) - (Date.parse(a.date)||0));
   return all.slice(0, limit);
 }
@@ -1260,7 +1331,7 @@ function renderReportTable(){
       <tr>
         <td style="width:40px"><input type="checkbox" class="rw-check" data-i="${i}"></td>
         <td class="title-cell" style="cursor:pointer;text-decoration:underline">${escapeHTML(it.title)}</td>
-        <td>${escapeHTML(firstCountryName(it.country))}</td>
+        <td>${escapeHTML(it.countryCanon || it.countryDisplay || '—')}</td>
         <td>${escapeHTML(it.source)}</td>
         <td>${renderRiskBadge(it.risk)}</td>
         <td>${renderConflictBadge(it.risk && it.risk.conflictIndex)}</td>
@@ -1282,8 +1353,7 @@ function renderReportTable(){
     </table>
   `;
 
-  // open summary
-  const shown = reports.slice(); // stable reference for this render
+  const shown = reports.slice();
   out.querySelectorAll('.title-cell').forEach((td,idx)=>{
     td.onclick=()=> openSummaryModal(shown[idx]);
   });
@@ -1293,7 +1363,7 @@ function renderReportTable(){
   Summary modal
 ============================= */
 function openSummaryModal(it){
-  const meta = [it.country,it.source,it.theme,it.type].filter(Boolean).join(' · ');
+  const meta = [it.countryDisplay, it.source, it.theme, it.type].filter(Boolean).join(' · ');
   const sumTxt =
     summarizeText(it.body,5) ||
     summarizeText(it.title+' '+meta,3) ||
@@ -1305,7 +1375,8 @@ function openSummaryModal(it){
   document.getElementById('summary-badges').innerHTML =
     `${renderRiskBadge(it.risk)} ${renderConflictBadge(it.risk && it.risk.conflictIndex)}
      <div style="margin-top:6px">${hbarHTML(it.hdp)}</div>
-     <div class="small" style="margin-top:6px">${renderC15Badges(it.c15)}</div>`;
+     <div class="small" style="margin-top:6px">${renderC15Badges(it.c15)}</div>
+     <div class="small" style="margin-top:6px;color:#9fb2c8">Canon country: <b>${escapeHTML(it.countryCanon||'—')}</b></div>`;
 
   document.getElementById('summary-content').innerHTML =
     `<p>${escapeHTML(sumTxt)}</p>
@@ -1363,7 +1434,7 @@ document.getElementById('btn-save-notes').onclick=()=>{
       id,
       title:it.title,
       body:it.body,
-      country:firstCountryName(it.country),
+      country:it.countryCanon || it.countryDisplay || '',
       source:it.source,
       url:it.url,
       created:now,
@@ -1381,26 +1452,185 @@ document.getElementById('btn-save-notes').onclick=()=>{
 };
 
 /* =============================
+  Map (Leaflet)
+============================= */
+let map, layerGroup;
+function initMap(){
+  map = L.map('map', {zoomControl:true}).setView([10, 15], 2);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  layerGroup = L.layerGroup().addTo(map);
+}
+function clearMap(){ layerGroup.clearLayers(); }
+function fitToActiveOrAll(){
+  if(activeCountry){
+    const c = RECAP.find(x=>x.name===activeCountry);
+    if(c) map.setView([c.lat, c.lon], 5);
+    return;
+  }
+  const evs = getFilteredEvents();
+  if(evs.length){
+    const bounds = L.latLngBounds(evs.map(e=>[e.lat, e.lon]));
+    map.fitBounds(bounds.pad(0.2));
+  } else {
+    map.setView([10, 15], 2);
+  }
+}
+function drawAcledPoints(){
+  const evs = getFilteredEvents();
+  if(evs.length){
+    evs.forEach(e=>{
+      const r = Math.max(3, Math.min(10, 3 + Math.log10((e.fatalities||0)+1)*3));
+      const m = L.circleMarker([e.lat, e.lon], {
+        radius: r,
+        weight: 1,
+        color: 'rgba(255,255,255,0.30)',
+        fillColor: 'rgba(255,79,61,0.85)',
+        fillOpacity: 0.70
+      });
+
+      const date = e.date ? escapeHTML(e.date) : '';
+      const t = escapeHTML(e.event_type || '');
+      const sub = escapeHTML(e.sub_event_type || '');
+      const fat = (e.fatalities==null?'':String(e.fatalities));
+      m.bindPopup(`
+        <div style="font-size:13px;line-height:1.35">
+          <div style="font-weight:700">${escapeHTML(e.country)}</div>
+          <div class="small">${date}</div>
+          <div>${t}${sub?(' · '+sub):''}</div>
+          <div>Fatalities: ${fat}</div>
+          ${e.source?`<div class="small">${escapeHTML(e.source)}</div>`:''}
+        </div>
+      `);
+
+      m.addTo(layerGroup);
+    });
+  } else {
+    const countries = getActiveCountries();
+    countries.forEach(name=>{
+      const c = RECAP.find(x=>x.name===name);
+      if(!c) return;
+      L.circleMarker([c.lat, c.lon], {
+        radius: 6,
+        weight: 1,
+        color:'rgba(138,160,187,0.65)',
+        fillColor:'rgba(138,160,187,0.35)',
+        fillOpacity:0.30
+      }).bindTooltip(name).addTo(layerGroup);
+    });
+  }
+  fitToActiveOrAll();
+}
+function drawDocRisk(){
+  const buckets = aggregateDocsByCountry24m(getFilteredReports());
+  const allowed = getActiveCountries();
+  const meanRisk = {};
+  allowed.forEach(c=>{
+    const b = buckets[c] || {risk:[], n:0};
+    meanRisk[c] = b.risk.length ? (b.risk.reduce((a,d)=>a+d,0)/b.risk.length) : 0;
+  });
+  const vmax = Math.max(...allowed.map(n=> meanRisk[n]||0));
+
+  allowed.forEach(name=>{
+    const c = RECAP.find(x=>x.name===name);
+    if(!c) return;
+    const v = meanRisk[name] || 0;
+    const t = (vmax>0) ? (v/vmax) : 0;
+    const fill = (v<=0) ? 'rgba(138,160,187,0.25)' : colorRamp01(t);
+    const n = buckets[name]?.n || 0;
+    const radius = 7 + Math.min(16, Math.sqrt(n)*2.0);
+
+    L.circleMarker([c.lat, c.lon],{
+      radius,
+      weight:1,
+      color:'rgba(255,255,255,0.30)',
+      fillColor: fill,
+      fillOpacity: (v<=0 ? 0.25 : 0.70)
+    }).bindPopup(`
+      <div style="font-size:13px;line-height:1.35">
+        <div style="font-weight:700">${escapeHTML(name)}</div>
+        <div>Mean doc risk (24m): <b>${escapeHTML(String(Math.round(v*10)/10))}</b></div>
+        <div class="small">Docs (24m): ${escapeHTML(String(n))}</div>
+      </div>
+    `).addTo(layerGroup);
+  });
+
+  fitToActiveOrAll();
+}
+function drawComposite(){
+  const comp = computeComposite24m();
+  const allowed = getActiveCountries();
+  const vmax = Math.max(...allowed.map(n=> (comp[n]?.score||0)));
+
+  allowed.forEach(name=>{
+    const c = RECAP.find(x=>x.name===name);
+    if(!c) return;
+    const x = comp[name] || {score:0, docs24m:0, meanRisk:0, meanHeat:0, ev24m:0, fat24m:0};
+
+    const t = (vmax>0) ? (x.score / vmax) : 0;
+    const fill = (x.score<=0) ? 'rgba(138,160,187,0.25)' : colorRamp01(t);
+    const radius = 8 + Math.min(18, Math.sqrt((x.docs24m||0) + (x.ev24m||0))*1.8);
+
+    L.circleMarker([c.lat, c.lon],{
+      radius,
+      weight:1,
+      color:'rgba(255,255,255,0.35)',
+      fillColor: fill,
+      fillOpacity: (x.score<=0 ? 0.25 : 0.70)
+    }).bindPopup(`
+      <div style="font-size:13px;line-height:1.35">
+        <div style="font-weight:700">${escapeHTML(name)}</div>
+        <div>Composite risk (0-100): <b>${escapeHTML(String(x.score))}</b></div>
+        <hr/>
+        <div class="small">Rw docs (24m): ${escapeHTML(String(x.docs24m||0))}</div>
+        <div class="small">Rw mean risk: ${escapeHTML(String(Math.round((x.meanRisk||0)*10)/10))}</div>
+        <div class="small">Rw mean heat: ${escapeHTML(String(Math.round((x.meanHeat||0)*10)/10))}</div>
+        <div class="small">Acled events (24m): ${escapeHTML(String(x.ev24m||0))}</div>
+        <div class="small">Acled fatalities (24m): ${escapeHTML(String(x.fat24m||0))}</div>
+      </div>
+    `).addTo(layerGroup);
+  });
+
+  fitToActiveOrAll();
+}
+function renderMap(){
+  clearMap();
+  const layer = document.getElementById('map-layer').value;
+  if(layer === 'acled') drawAcledPoints();
+  else if(layer === 'doc') drawDocRisk();
+  else drawComposite();
+}
+
+/* =============================
   Orchestrator
 ============================= */
 function rerenderAll(){
-  rebuildPartnerDropdown(); // keep partner list synced
+  rebuildPartnerDropdown();
   setKV();
   renderDashboardTiles();
   renderReportTable();
-  renderAcledPoints();
+  renderMap();
 }
 
 document.getElementById('dash-recalc').onclick = renderDashboardTiles;
-document.getElementById('dash-metric').onchange = renderDashboardTiles;
-document.getElementById('dash-agg').onchange = renderDashboardTiles;
-document.getElementById('dash-sort').onchange = renderDashboardTiles;
+document.getElementById('dash-metric').onchange = ()=> { renderDashboardTiles(); };
+document.getElementById('dash-agg').onchange = ()=> { renderDashboardTiles(); };
+document.getElementById('dash-sort').onchange = ()=> { renderDashboardTiles(); };
 
 document.getElementById('table-q').addEventListener('input', ()=> rerenderAll());
-document.getElementById('map-acled').onchange = ()=> renderAcledPoints();
+document.getElementById('map-layer').addEventListener('change', ()=> renderMap());
+
+['w-doc','w-heat','w-ev','w-fat'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', ()=> { renderMap(); renderDashboardTiles(); });
+});
 
 /* =============================
-  Fetch button (Sources)
+  Fetch
 ============================= */
 document.getElementById('btn-fetch').onclick = async ()=>{
   const st = document.getElementById('status');
@@ -1411,22 +1641,16 @@ document.getElementById('btn-fetch').onclick = async ()=>{
     const doRW = document.getElementById('src-rw').checked;
     const doAcled = document.getElementById('src-acled').checked;
 
-    if(doRW){
-      currentReports = await fetchReliefWeb();
-    } else {
-      currentReports = [];
-    }
+    if(doRW) currentReports = await fetchReliefWeb();
+    else currentReports = [];
 
-    // partner dropdown must reflect new reports
+    // Keep only canon-recap reports for aggregation; table filter already enforces canon.
+    // If you want to debug: console.log(currentReports.filter(r=>!r.countryCanon).slice(0,10))
     rebuildPartnerDropdown();
 
-    if(doAcled){
-      currentEvents = await fetchAcled();
-    } else {
-      currentEvents = [];
-    }
+    if(doAcled) currentEvents = await fetchAcled();
+    else currentEvents = [];
 
-    // if active country set but no longer exists, clear
     if(activeCountry){
       const allowed = new Set(getActiveCountries());
       if(!allowed.has(activeCountry)){
@@ -1446,7 +1670,7 @@ document.getElementById('btn-fetch').onclick = async ()=>{
 };
 
 /* =============================
-  Esc key closes modals
+  Modals and keys
 ============================= */
 window.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
@@ -1456,6 +1680,9 @@ window.addEventListener('keydown',e=>{
   }
 });
 
+document.getElementById('country-modal').onclick=(e)=>{ if(e.target.id==='country-modal') e.currentTarget.style.display='none'; };
+document.getElementById('notes-modal').onclick=(e)=>{ if(e.target.id==='notes-modal') e.currentTarget.style.display='none'; };
+
 /* =============================
   Init
 ============================= */
@@ -1464,6 +1691,7 @@ updateActiveCountryBadge();
 renderNotes('');
 renderDashboardTiles();
 renderReportTable();
+renderMap();
 </script>
 </body>
 </html>
